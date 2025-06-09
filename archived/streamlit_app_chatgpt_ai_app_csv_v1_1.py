@@ -1,5 +1,3 @@
-#from file: streamlit_app_chatgpt_ai_app_csv_v1_2.py
-# -----------------------------------------------------------------------------
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -19,17 +17,8 @@ def load_data():
     source = st.sidebar.radio("Chọn nguồn dữ liệu:", ["CSV URL", "Upload CSV", "API"], index=0)
 
     if source == "CSV URL":
-        # URL chứa dữ liệu chứng khoán mẫu
-        # sample_history_stockData.csv
-        # csv_url = "https://gist.githubusercontent.com/thaonbtfin/fcb2906734735389faa0d32c8b47d456/raw/5dcc232d24f45b95e388e334c3ceeddc874752e9/sample_history_stockData.csv"
-        # TH_toGoogleSheet.csv
-        csv_url="https://gist.githubusercontent.com/thaonbtfin/702773bb825afd63553f515b61645e8b/raw/8fe2a6cfe9cb5db792eabf07bf0d61d7f525b5c0/TH_toGoogleSheet.csv"
-        # # TH_toGoogleSheet.csv
-        # csv_url="https://gist.githubusercontent.com/thaonbtfin/4c3a7018a1058d5f1e31fcf91d2367a9/raw/6205af6e9522710c4e88c80cbe234c1592fa5d05/DH_toGoogleSheet.csv"
         try:
-            # url = "https://gist.githubusercontent.com/thaonbtfin/fcb2906734735389faa0d32c8b47d456/raw/5dcc232d24f45b95e388e334c3ceeddc874752e9/sample_history_stockData.csv"
-            url = csv_url
-            st.info(f"Đang tải dữ liệu từ: {url}")
+            url = "https://gist.githubusercontent.com/thaonbtfin/fcb2906734735389faa0d32c8b47d456/raw/5dcc232d24f45b95e388e334c3ceeddc874752e9/sample_history_stockData.csv"
             response = requests.get(url)
             df = pd.read_csv(io.StringIO(response.text))
         except Exception as e:
@@ -130,29 +119,6 @@ def train_model(data):
     report = classification_report(y_test, y_pred, target_names=le.classes_, output_dict=True)
     return model, report, le
 
-# Backtest logic and UI tab integration
-def run_backtest(data):
-    capital = 1.0
-    position = 0
-    capital_history = []
-
-    for i in range(len(data)):
-        action = data.iloc[i]['predicted_action']
-        price = data.iloc[i]['close']
-
-        if action == 'Buy' and position == 0:
-            position = capital / price
-            capital = 0
-        elif action == 'Sell' and position > 0:
-            capital = position * price
-            position = 0
-
-        current_value = capital if position == 0 else position * price
-        capital_history.append(current_value)
-
-    data['portfolio_value'] = capital_history
-    return data
-
 # ============================
 # Streamlit UI
 # ============================
@@ -198,7 +164,7 @@ with st.spinner("Đang tải dữ liệu và huấn luyện mô hình..."):
     latest_predictions_df['Ngày cuối'] = latest_predictions_df['Mã'].apply(lambda t: models[t][1]['time'].max())
     latest_predictions_df = latest_predictions_df.sort_values(by='Ngày cuối', ascending=False).drop(columns=['Ngày cuối'])
 
-all_tab, detail_tab, backtest_tab, report_tab = st.tabs(["📋 Tất cả cổ phiếu", "🔍 Chi tiết cổ phiếu", "🧪 Giả lập hiệu suất chiến lược", "📈 Hiệu năng mô hình"])
+all_tab, detail_tab, report_tab = st.tabs(["📋 Tất cả cổ phiếu", "🔍 Chi tiết cổ phiếu", "📈 Hiệu năng mô hình"])
 
 with all_tab:
     st.subheader("Khuyến nghị tổng hợp")
@@ -222,21 +188,6 @@ with detail_tab:
     st.plotly_chart(fig, use_container_width=True)
 
     st.dataframe(last_rows[['time', 'close', 'ma5', 'rsi', 'eps', 'roe', 'predicted_action', 'Accuracy (%)']].reset_index(drop=True))
-
-with backtest_tab:
-    st.subheader("Giả lập hiệu suất chiến lược")
-    selected_bt = st.selectbox("Chọn mã cổ phiếu để backtest", list(models.keys()), key="backtest_select")
-
-    model, data_bt, _, le = models[selected_bt]
-    last_rows_bt = data_bt.tail(200).copy()
-    pred_encoded_bt = model.predict(last_rows_bt[['ma5', 'ma10', 'return_1d', 'return_5d', 'rsi', 'eps', 'roe']])
-    last_rows_bt['predicted_action'] = le.inverse_transform(pred_encoded_bt)
-
-    bt_result = run_backtest(last_rows_bt)
-
-    fig_bt = px.line(bt_result, x='time', y='portfolio_value', title=f'Giá trị danh mục nếu làm theo khuyến nghị - {selected_bt}')
-    st.plotly_chart(fig_bt, use_container_width=True)
-    st.write(f"Giá trị cuối cùng: {bt_result['portfolio_value'].iloc[-1]:.2f}x so với vốn ban đầu")
 
 with report_tab:
     st.subheader("Báo cáo độ chính xác mô hình")
