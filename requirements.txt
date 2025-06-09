@@ -1,5 +1,2 @@
 streamlit
 pandas
-xgboost
-sklearn
-plotly

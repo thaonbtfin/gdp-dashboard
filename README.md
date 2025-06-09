@@ -12,8 +12,12 @@ A simple Streamlit app showing the GDP of different countries in the world.
    $ pip install -r requirements.txt
    ```
 
-2. Run the app
+2. Run the app GDP dashboard
 
    ```
    $ streamlit run streamlit_app.py
+   ```
+   OR run the app AI dashboard
+   ```
+   $ streamlit run streamlit_app_chatgpt_ai_app_csv_v1_2.py
    ```
