@@ -1,8 +1,7 @@
 import streamlit as st
-import pandas as pd
 from src.chatgpt.chatgpt_dashboard import ChatGPT_def, ChatGPT_st
-from src.gdp.gdp_dashboard import GDP_def
-from src.streamlit.streamlit_dashboard import Streamlit_def, Streamlit_st
+from src.gdp.gdp_dashboard import GDP_def, GDP_st
+from src.streamlit.streamlit_dashboard import Streamlit_def
 
 # ============================
 # Step 1: Load and preprocess data
@@ -25,7 +24,7 @@ with st.spinner("Đang tải dữ liệu và huấn luyện mô hình..."):
 gdp_tab, all_tab, detail_tab, backtest_tab, report_tab = st.tabs(["GDP Dashboard","📋 Tất cả cổ phiếu", "🔍 Chi tiết cổ phiếu", "🧪 Giả lập hiệu suất chiến lược", "📈 Hiệu năng mô hình"])
 
 with gdp_tab:
-    Streamlit_st.gdp_tab(gdp_df)
+    GDP_st.gdp_tab(gdp_df)
 
 with all_tab:
     ChatGPT_st.all_tab(latest_predictions_df)
