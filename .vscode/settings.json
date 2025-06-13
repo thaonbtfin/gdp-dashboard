@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./src/vnstock-main",
+        "./src/vnstock-main/vnstock/common"
+    ]
+}
