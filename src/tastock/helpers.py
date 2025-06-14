@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 
 from datetime import datetime, timedelta
-from constants import DEFAULT_OUTPUT_DIR, DEFAULT_PERIOD, DEFAULT_START_DATE, DEFAULT_END_DATE, DEFAULT_USE_SUB_DIR
+from src.constants import DEFAULT_OUTPUT_DIR, DEFAULT_PERIOD, DEFAULT_START_DATE, DEFAULT_END_DATE, DEFAULT_USE_SUB_DIR
 
 class Helpers():    
     """
@@ -160,4 +160,40 @@ class Helpers():
         df_merged.to_csv(csv_filepath, index=False)
         print(f"Saved dataframes to {csv_filepath}")
 
+        return csv_filepath
+
+    @staticmethod
+    def save_single_dataframe_to_csv(
+        df: pd.DataFrame,
+        filename_prefix: str,
+        output_dir: str = DEFAULT_OUTPUT_DIR,
+        use_sub_dir: bool = True,
+        include_timestamp_in_filename: bool = True,
+        index: bool = False
+    ) -> str:
+        """
+        Saves a single DataFrame to a CSV file with flexible naming and directory options.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to save.
+            filename_prefix (str): Prefix for the CSV filename (e.g., "metrics_report").
+            output_dir (str): The primary directory where the file (or its sub-directory) will be saved.
+            use_sub_dir (bool): If True, creates a timestamped subdirectory within 'output_dir'
+                                and saves the file there. If False, saves directly in 'output_dir'.
+            include_timestamp_in_filename (bool): If True, appends a timestamp to the filename.
+            index (bool): Whether to write DataFrame index as a column.
+
+        Returns:
+            str: The full path to the saved CSV file.
+        """
+        target_dir = Helpers.create_output_dir(output_dir, use_sub_dir=use_sub_dir) if use_sub_dir else output_dir
+        if not use_sub_dir: # Ensure base output_dir exists if not using sub_dir
+            os.makedirs(target_dir, exist_ok=True)
+
+        timestamp_str = f"_{Helpers.name_today_datetime()}" if include_timestamp_in_filename else ""
+        csv_filename = f"{filename_prefix}{timestamp_str}.csv"
+        csv_filepath = os.path.join(target_dir, csv_filename)
+
+        df.to_csv(csv_filepath, index=index)
+        print(f"DataFrame saved to: {csv_filepath}")
         return csv_filepath
