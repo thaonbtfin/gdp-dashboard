@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np # For np.sqrt
 from vnstock import Vnstock # Import Vnstock for financial ratios
-from fetcher import Fetcher # Import Fetcher
+from .fetcher import Fetcher # Import Fetcher
 from src.constants import DEFAULT_SOURCE, DEFAULT_OUTPUT_DIR # Import necessary constants
-from calculator import Calculator
+from .calculator import Calculator
 
 class Stock:
     """
