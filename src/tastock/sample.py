@@ -5,12 +5,12 @@ sys.path.insert(0, os.getcwd())
 
 import pandas as pd
 
-from fetcher import Fetcher
-from stock import Stock
-from portfolio import Portfolio
-from helpers import Helpers
+from src.tastock.fetcher import Fetcher
+from src.tastock.stock import Stock
+from src.tastock.portfolio import Portfolio
+from src.tastock.helpers import Helpers
 from src.constants import DEFAULT_SOURCE, SYMBOLS_DH, SYMBOLS_TH, DEFAULT_OUTPUT_DIR, SYMBOLS_VN30, TEMP_DIR
-from calculator import Calculator
+from src.tastock.calculator import Calculator
 
 OUTPUT_DIR = DEFAULT_OUTPUT_DIR + 'fetchedData/sample'
 
