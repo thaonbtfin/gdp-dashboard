@@ -27,6 +27,9 @@ DEFAULT_INVESTMENT_AMOUNT = 100000000  # Default investment amount in VND
 DEFAULT_INFLATION_RATE_PERCENTAGE = 3.5  # Default inflation rate in percentage
 
 # Portfolio
+# Sample
+SYMBOLS = ['ACB', 'FPT']
+
 # Dai han
 SYMBOLS_DH = [
     'VNINDEX',
@@ -65,3 +68,27 @@ SYMBOLS_VN100 = [
     'TCH', 'TLG', 'TPB', 'VCB', 'VCG', 'VCI', 'VGC', 'VHC', 'VHM', 'VIB',
     'VIC', 'VIX', 'VJC', 'VND', 'VNM', 'VPB', 'VPI', 'VRE', 'VSC', 'VTP'
 ]
+
+# VN100
+SYMBOLS_VN100 = [
+    'AAA', 'ACB', 'ANV', 'BCM', 'BID', 'BMP', 'BSI', 'BVH', 'BWE', 'CII',
+    'CMG', 'CTD', 'CTG', 'CTR', 'CTS', 'DBC', 'DCM', 'DGC', 'DGW', 'DIG',
+    'DPM', 'DSE', 'DXG', 'DXS', 'EIB', 'EVF', 'FPT', 'FRT', 'FTS', 'GAS',
+    'GEX', 'GMD', 'GVR', 'HAG', 'HCM', 'HDB', 'HDC', 'HDG', 'HHV', 'HPG',
+    'HSG', 'HT1', 'IMP', 'KBC', 'KDC', 'KDH', 'KOS', 'LPB', 'MBB', 'MSB',
+    'MSN', 'MWG', 'NAB', 'NKG', 'NLG', 'NT2', 'OCB', 'PAN', 'PC1', 'PDR',
+    'PHR', 'PLX', 'PNJ', 'POW', 'PPC', 'PTB', 'PVD', 'PVT', 'REE', 'SAB',
+    'SBT', 'SCS', 'SHB', 'SIP', 'SJS', 'SSB', 'SSI', 'STB', 'SZC', 'TCB',
+    'TCH', 'TLG', 'TPB', 'VCB', 'VCG', 'VCI', 'VGC', 'VHC', 'VHM', 'VIB',
+    'VIC', 'VIX', 'VJC', 'VND', 'VNM', 'VPB', 'VPI', 'VRE', 'VSC', 'VTP'
+]
+
+# Portfolio
+PORTFOLIOS = {
+    "DefaultTwoStocks": SYMBOLS,       # e.g., ['ACB', 'FPT']
+    # "LongTermPicks": SYMBOLS_DH[:5], # Taking first 5 for a quicker test
+    # "MidTermPicks": SYMBOLS_TH[:3],  # Taking first 3 for a quicker test
+    "VN30_Sample": SYMBOLS_VN30[:2], # Taking first 2 for a quicker test
+    "EmptyTest": [],                 # Test case for an empty symbol list
+    "SingleStockTest": ['ACB']       # Test case for a portfolio with a single stock
+}
