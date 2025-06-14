@@ -1,6 +1,6 @@
 import pandas as pd
-from fetcher import Fetcher # Assuming Fetcher is in api.fetcher relative to this file's execution context
-from calculator import Calculator # Assuming Calculator is in services.calculator
+from .fetcher import Fetcher # Assuming Fetcher is in api.fetcher relative to this file's execution context
+from .calculator import Calculator # Assuming Calculator is in services.calculator
 from src.constants import DEFAULT_SOURCE, DEFAULT_OUTPUT_DIR
 
 class Portfolio:
