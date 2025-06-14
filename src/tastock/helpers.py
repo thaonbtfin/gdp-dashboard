@@ -163,6 +163,119 @@ class Helpers():
         return csv_filepath
 
     @staticmethod
+    def save_multiple_dataframes_to_multiple_csv_files_in_directory(
+        dataframes: dict,
+        output_dir: str = DEFAULT_OUTPUT_DIR,
+        use_sub_dir: bool = True,
+        filename_prefix_map: dict = None,
+        filename_suffix: str = "",
+        include_timestamp_in_filename: bool = True,
+        index: bool = False
+    ) -> str:
+        """
+        Saves multiple DataFrames from a dictionary to individual CSV files
+        with flexible naming and directory options.
+
+        Args:
+            dataframes (dict): Dictionary of {key: DataFrame}.
+            output_dir (str): The primary directory where files will be saved.
+            use_sub_dir (bool): If True, creates a timestamped subdirectory within 'output_dir'.
+                                If False, uses 'output_dir' directly.
+            filename_prefix_map (dict, optional): A map of {key_from_dataframes: custom_prefix}.
+                                                  If a key is not found or map is None,
+                                                  the key from dataframes dict is used as prefix.
+            filename_suffix (str): A suffix to append to the filename before the timestamp and extension.
+                                   Example: "_data" -> prefix_data_timestamp.csv.
+                                   Ensure it starts with '_' or similar if separation is desired.
+            include_timestamp_in_filename (bool): If True, appends a timestamp to each filename.
+            index (bool): Whether to write DataFrame index as a column in the CSV.
+
+        Returns:
+            str: The full path to the target directory where files were (or would be) saved.
+        """
+        target_dir = Helpers.create_output_dir(output_dir, use_sub_dir=use_sub_dir)
+
+        if not dataframes:
+            print(f"No dataframes provided. Target directory is: {target_dir}")
+            return target_dir
+
+        timestamp_str_base = Helpers.name_today_datetime()
+
+        for key, df_item in dataframes.items():
+            if not isinstance(df_item, pd.DataFrame):
+                print(f"Warning: Item for key '{key}' is not a DataFrame. Skipping.")
+                continue
+
+            current_prefix = str(filename_prefix_map.get(key, key)) if filename_prefix_map else str(key)
+            safe_prefix = "".join(c if c.isalnum() or c in ['_', '-'] else '_' for c in current_prefix)
+            processed_suffix = "".join(c if c.isalnum() or c in ['_', '-'] else '_' for c in filename_suffix) if filename_suffix else ""
+            timestamp_part = f"_{timestamp_str_base}" if include_timestamp_in_filename else ""
+            
+            csv_filename = f"{safe_prefix}{processed_suffix}{timestamp_part}.csv"
+            csv_filepath = os.path.join(target_dir, csv_filename)
+
+            df_item.to_csv(csv_filepath, index=index)
+            print(f"DataFrame for key '{key}' saved to: {csv_filepath}")
+        return target_dir
+
+    @staticmethod
+    def save_multiple_dataframes_to_single_csv(
+        dataframes: dict,
+        filename_prefix: str,
+        output_dir: str = DEFAULT_OUTPUT_DIR,
+        use_sub_dir: bool = True,
+        include_timestamp_in_filename: bool = True,
+        sort_by_time: bool = True,
+        index: bool = False
+    ) -> str:
+        """
+        Merges multiple DataFrames from a dictionary into a single DataFrame
+        and saves it to a CSV file with flexible naming and directory options.
+        Each key in the dataframes dict is used as the column name for 'close' prices.
+
+        Args:
+            dataframes (dict): Dictionary of {symbol: DataFrame}. Each DataFrame must
+                               have 'time' and 'close' columns.
+            filename_prefix (str): Prefix for the CSV filename (e.g., "merged_stock_data").
+            output_dir (str): The primary directory where the file will be saved.
+            use_sub_dir (bool): If True, creates a timestamped subdirectory within 'output_dir'.
+            include_timestamp_in_filename (bool): If True, appends a timestamp to the filename.
+            sort_by_time (bool): If True, sorts the merged DataFrame by the 'time' column descending.
+            index (bool): Whether to write DataFrame index as a column in the CSV.
+
+        Returns:
+            str: The full path to the saved CSV file.
+        """
+        target_dir = Helpers.create_output_dir(output_dir, use_sub_dir=use_sub_dir) if use_sub_dir else output_dir
+        if not use_sub_dir: # Ensure base output_dir exists if not using sub_dir
+            os.makedirs(target_dir, exist_ok=True)
+
+        timestamp_str = f"_{Helpers.name_today_datetime()}" if include_timestamp_in_filename else ""
+        csv_filename = f"{filename_prefix}{timestamp_str}.csv"
+        csv_filepath = os.path.join(target_dir, csv_filename)
+
+        # Merge on 'time' column
+        dfs_to_merge = []
+        for key, df_item in dataframes.items():
+            symbol = key if isinstance(key, str) else str(key) # Ensure symbol is a string
+            if 'time' in df_item.columns and 'close' in df_item.columns:
+                processed_df = df_item[['time', 'close']].copy()
+                processed_df['time'] = processed_df['time'].astype(str).str.replace('-', '', regex=False)
+                # Sorting individual DFs before merge isn't strictly necessary if final merge is sorted
+                processed_df = processed_df.rename(columns={'close': symbol})
+                dfs_to_merge.append(processed_df.set_index('time'))
+        
+        df_merged = pd.DataFrame()
+        if dfs_to_merge:
+            df_merged = pd.concat(dfs_to_merge, axis=1, join='outer').reset_index()
+            if sort_by_time and 'time' in df_merged.columns:
+                df_merged = df_merged.sort_values('time', ascending=False).reset_index(drop=True)
+
+        df_merged.to_csv(csv_filepath, index=index)
+        print(f"Multiple DataFrames merged and saved to: {csv_filepath}")
+        return csv_filepath
+
+    @staticmethod
     def save_single_dataframe_to_csv(
         df: pd.DataFrame,
         filename_prefix: str,
@@ -197,3 +310,4 @@ class Helpers():
         df.to_csv(csv_filepath, index=index)
         print(f"DataFrame saved to: {csv_filepath}")
         return csv_filepath
+    

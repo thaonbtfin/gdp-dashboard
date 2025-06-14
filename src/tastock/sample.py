@@ -24,7 +24,7 @@ def sample_fetch_periods_and_save_to_csv_file():
     fetcher = Fetcher(
             symbols='ACB',
             source=source,
-            output_dir=OUTPUT_DIR
+            output_dir=OUTPUT_DIR+'/periods'
         )
     
     # Fetch historical data for the given period (number of business days)
@@ -34,16 +34,19 @@ def sample_fetch_periods_and_save_to_csv_file():
     # print(f'{fetched_df_period}')  # Uncomment to inspect fetched data
     
     # Save the fetched DataFrame to a CSV file
-    Helpers.save_dataframes_to_csv_file(
-        fetched_df_period
-    )
+    Helpers.save_multiple_dataframes_to_single_csv(
+            dataframes=fetched_df_period,
+            filename_prefix=f"history_period_",
+            output_dir=OUTPUT_DIR + '/history_period', # Uses the OUTPUT_DIR defined in sample.py
+            use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+        )    
 
-    # Save all fetched DataFrames into a single merged CSV file
-    Helpers.save_dataframes_to_csv_files(
-        fetched_df_period,
-        fetcher.base_output_dir,
-        fetcher.source,
-        fetcher.use_sub_dir
+    # Save each symbol's DataFrame into separate CSV files in a folder
+    Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
+        dataframes=fetched_df_period,
+        filename_suffix=f"_history_period_",
+        output_dir=OUTPUT_DIR + '/history_period', # Uses the OUTPUT_DIR defined in sample.py
+        use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
     )
 
 def sample_fetch_from_start_end_date_and_save_to_csv_file():
@@ -59,7 +62,7 @@ def sample_fetch_from_start_end_date_and_save_to_csv_file():
     fetcher = Fetcher(
             symbols=symbols,
             source=source,
-            output_dir=OUTPUT_DIR
+            output_dir=OUTPUT_DIR + '/start_end_date'
         )
     
     # Fetch historical data for the specified symbols and date range
@@ -72,16 +75,19 @@ def sample_fetch_from_start_end_date_and_save_to_csv_file():
     # print(f'{fetched_df}')  # Uncomment to inspect fetched data
     
     # Save the fetched DataFrame to a CSV file
-    Helpers.save_dataframes_to_csv_file(
-        fetched_df
-    )
+    Helpers.save_multiple_dataframes_to_single_csv(
+            dataframes=fetched_df,
+            filename_prefix=f"history_",
+            output_dir=OUTPUT_DIR + '/history_start_end_date', # Uses the OUTPUT_DIR defined in sample.py
+            use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+        )    
 
     # Save each symbol's DataFrame into separate CSV files in a folder
-    Helpers.save_dataframes_to_csv_files(
-        fetched_df,
-        fetcher.base_output_dir,
-        fetcher.source,
-        fetcher.use_sub_dir
+    Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
+        dataframes=fetched_df,
+        filename_suffix=f"_history_",
+        output_dir=OUTPUT_DIR + '/history_start_end_date', # Uses the OUTPUT_DIR defined in sample.py
+        use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
     )
 
 def sample_calculator_moving_average():
@@ -149,8 +155,8 @@ def sample_calculate_stock_performance_metrics_to_stock_object():
         csv_filepath = Helpers.save_single_dataframe_to_csv(
             df=metrics_df,
             filename_prefix="all_symbols_performance_metrics",
-            output_dir=OUTPUT_DIR, # Uses the OUTPUT_DIR defined in sample.py
-            use_sub_dir=False # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+            output_dir=OUTPUT_DIR + '/stock_performance_metrics', # Uses the OUTPUT_DIR defined in sample.py
+            use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
         )
         print(f"\nAll stock performance metrics saved to: {csv_filepath}")
 
@@ -184,8 +190,8 @@ def sample_calculate_portfolio_performance_metrics():
             df=metrics_df,
             # filename_prefix="all_symbols_performance_metrics",
             filename_prefix=f"portfolio_{portfolio_name}_performance_metrics",
-            output_dir=OUTPUT_DIR, # Uses the OUTPUT_DIR defined in sample.py
-            use_sub_dir=False # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+            output_dir=OUTPUT_DIR + '/portfolio_performance_metrics', # Uses the OUTPUT_DIR defined in sample.py
+            use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
         )
         print(f"\nPortfolio performance metrics for {portfolio_name} saved to: {csv_filepath}")
     else:
@@ -201,5 +207,5 @@ if __name__ == "__main__":
     sample_fetch_periods_and_save_to_csv_file()
     sample_fetch_from_start_end_date_and_save_to_csv_file()
     # sample_calculator_moving_average()                                # not use for now
-    sample_calculate_stock_performance_metrics_to_stock_object()      # use this
-    sample_calculate_portfolio_performance_metrics()                  # use this
+    # sample_calculate_stock_performance_metrics_to_stock_object()      # use this
+    # sample_calculate_portfolio_performance_metrics()                  # use this
