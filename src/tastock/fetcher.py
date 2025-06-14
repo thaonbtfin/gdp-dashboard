@@ -8,8 +8,7 @@ Usage (as a script):
     python -m models.fetcher --symbols ACB,VCB --start_date 2024-01-01 --end_date 2024-06-01 --source VCI
 
 Or import and use Fetcher in your own code:
-    from models.fetcher import Fetcher
-    fetcher = Fetcher(symbols=['ACB', 'VCB'], start_date='2024-01-01', end_date='2024-06-01', source='VCI')
+    from models.fetcher import Fetcher = Fetcher(symbols=['ACB', 'VCB'], start_date='2024-01-01', end_date='2024-06-01', source='VCI')
     fetcher.fetch_history_and_merge_csv()
 """
 
@@ -21,8 +20,8 @@ import argparse
 import pandas as pd
 
 from vnstock import Vnstock
-from constants import DEFAULT_SYMBOL, DEFAULT_START_DATE, DEFAULT_END_DATE, DEFAULT_SOURCE, DEFAULT_OUTPUT_DIR
-from tastock.helpers import Helpers
+from src.constants import DEFAULT_SYMBOL, DEFAULT_START_DATE, DEFAULT_END_DATE, DEFAULT_SOURCE, DEFAULT_OUTPUT_DIR
+from helpers import Helpers
 
 class Fetcher():
     """
@@ -68,7 +67,6 @@ class Fetcher():
                                             Defaults to `self.symbols`.
             start_date (str, optional): Start date in 'YYYY-MM-DD' format. Defaults to `self.start_date`.
             end_date (str, optional): End date in 'YYYY-MM-DD' format. Defaults to `self.end_date`.
-            source (str, optional): Data source. Defaults to `self.source`.
 
         Returns:
             dict: A dictionary where keys are symbols and values are DataFrames of historical data.
@@ -77,7 +75,6 @@ class Fetcher():
         symbols = symbols or self.symbols
         start_date = start_date or self.start_date
         end_date = end_date or self.end_date
-        source = self.source
 
         if isinstance(symbols, str):
             symbols = [s.strip() for s in symbols.split(',') if s.strip()]
@@ -102,14 +99,12 @@ class Fetcher():
         Args:
             symbols (list or str, optional): Symbols to fetch. Defaults to `self.symbols`.
             period (int, optional): Number of business days to fetch. Defaults to 0.
-            source (str, optional): Data source. Defaults to `self.source`.
 
         Returns:
             dict: A dictionary where keys are symbols and values are DataFrames
                   trimmed to the specified `period`.
         """
         symbols = symbols or self.symbols
-        source = self.source
 
         # Get initial start and end dates
         start_date, end_date = Helpers.get_start_end_dates(period)
@@ -129,7 +124,6 @@ class Fetcher():
             start_date=adjusted_start_date.strftime('%Y-%m-%d'),
             end_date=end_date,
             symbols=symbols,
-            source=source
         )
 
         # Trim each Dataframe to keep only the last `period` rows
