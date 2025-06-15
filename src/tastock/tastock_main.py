@@ -196,14 +196,14 @@ class Assistant:
                     include_timestamp_in_filename=include_timestamp_in_filenames
                 )
 
-                # # Optionally, save individual symbol files (if still needed)
-                # Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
-                #     dataframes=dataframes_for_current_portfolio,
-                #     filename_suffix=portfolio_specific_symbol_suffix,
-                #     output_dir=current_portfolio_target_dir,
-                #     use_sub_dir=use_sub_dir_for_timestamp_folders,
-                #     include_timestamp_in_filename=include_timestamp_in_filenames
-                # )
+                # Optionally, save individual symbol files (if still needed)
+                Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
+                    dataframes=dataframes_for_current_portfolio,
+                    filename_suffix=portfolio_specific_symbol_suffix,
+                    output_dir=current_portfolio_target_dir + "/symbols",   # save to sub-folder
+                    use_sub_dir=use_sub_dir_for_timestamp_folders,
+                    include_timestamp_in_filename=include_timestamp_in_filenames
+                )
 
                 # After saving the merged CSV, calculate and save its performance
                 if merged_csv_filepath and os.path.exists(merged_csv_filepath):
