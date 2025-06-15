@@ -47,7 +47,8 @@ class Helpers():
         """
         Return the current date and time as a string in 'YYYYMMDD_HHMM' format.
         """
-        return datetime.now().strftime('%Y%m%d_%H%M')
+        # return datetime.now().strftime('%Y%m%d_%H%M')
+        return datetime.now().strftime('%Y%m%d')
 
     # @staticmethod
     def get_start_end_dates(period=DEFAULT_PERIOD):

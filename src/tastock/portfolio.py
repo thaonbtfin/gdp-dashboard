@@ -7,13 +7,28 @@ class Portfolio:
     """
     Represents a portfolio of stocks and calculates its performance metrics.
     """
-    def __init__(self, symbols: list, start_date: str, end_date: str, source: str = DEFAULT_SOURCE, weights: list = None, name: str = "MyPortfolio"):
+    # def __init__(self, symbols: list, start_date: str, end_date: str, source: str = DEFAULT_SOURCE, weights: list = None, name: str = "MyPortfolio"):
+    def __init__(self, symbols: list, start_date: str = None, end_date: str = None, source: str = DEFAULT_SOURCE, weights: list = None, name: str = "MyPortfolio", fetched_data: dict = None):
+        """
+        Initializes the Portfolio.
+
+        Args:
+            symbols (list): List of stock symbols.
+            start_date (str, optional): Start date for data fetching if fetched_data is not provided.
+            end_date (str, optional): End date for data fetching if fetched_data is not provided.
+            source (str, optional): Data source if fetching. Defaults to DEFAULT_SOURCE.
+            weights (list, optional): List of weights for each symbol. Defaults to equal weights.
+            name (str, optional): Name of the portfolio. Defaults to "MyPortfolio".
+            fetched_data (dict, optional): Pre-fetched historical data. Keys are symbols, values are DataFrames.
+                                           If provided, internal fetching is skipped.
+        """
         self.symbols = symbols
         self.start_date = start_date
         self.end_date = end_date
         self.source = source
         self.weights = weights if weights else [1/len(symbols)] * len(symbols) # Equal weights if not provided
         self.name = name
+        self.fetched_data = fetched_data # Store pre-fetched data
         self.portfolio_value_series = None
         self.performance_metrics = None
         self._build_portfolio_and_calculate_metrics()
@@ -33,11 +48,16 @@ class Portfolio:
         )
 
     def _build_portfolio_and_calculate_metrics(self):
-        fetched_data = self._fetch_data()
+        # fetched_data = self._fetch_data()
+        if self.fetched_data:
+            data_to_process = self.fetched_data
+        else:
+            data_to_process = self._fetch_data()
 
         close_prices_list = []
         for symbol in self.symbols:
-            df_symbol = fetched_data.get(symbol)
+            # df_symbol = fetched_data.get(symbol)
+            df_symbol = data_to_process.get(symbol)
             if df_symbol is not None and not df_symbol.empty and 'close' in df_symbol.columns and 'time' in df_symbol.columns:
                 df_symbol['time'] = pd.to_datetime(df_symbol['time'])
                 df_symbol = df_symbol.set_index('time')
