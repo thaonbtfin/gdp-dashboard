@@ -9,7 +9,7 @@ from src.tastock.fetcher import Fetcher
 from src.tastock.stock import Stock
 from src.tastock.portfolio import Portfolio
 from src.tastock.helpers import Helpers
-from src.constants import DEFAULT_SOURCE, SYMBOLS, SYMBOLS_DH, SYMBOLS_TH, SYMBOLS_VN30, PORTFOLIOS
+from src.constants import *
 from src.tastock.calculator import Calculator
 
 # output_dir = DEFAULT_output_dir + 'fetchedData/sample'
@@ -72,6 +72,7 @@ class Assistant:
 
     @staticmethod
     def fetch_portfolios_data_and_save_to_csv(
+    # def fetch_portfolios_data_and_calculate_performance_to_save_to_csv(
         portfolios_map: dict, # Key: portfolio_name (str), Value: list_of_symbols (List[str])
         period: int = 1251,
         source: str = DEFAULT_SOURCE,
@@ -180,36 +181,48 @@ class Assistant:
                 current_portfolio_target_dir = os.path.join(base_output_dir, portfolio_name)
             
             # Ensure the directory exists. Helpers.save_* methods also create directories.
-            os.makedirs(current_portfolio_target_dir, exist_ok=True)
+            # os.makedirs(current_portfolio_target_dir, exist_ok=True)
 
             portfolio_specific_merged_prefix = f"history_{portfolio_name}"
-            portfolio_specific_symbol_suffix = f"_{portfolio_name}_history"
+            # portfolio_specific_symbol_suffix = f"_{portfolio_name}_history"
+            portfolio_specific_symbol_suffix = f"_{portfolio_name}_history" # Suffix for individual files if saved
 
             try:
-                # fetched_data_for_current_portfolio = Assistant.fetch_history_data_and_save_to_csv_file(
-                #     period=period,
-                #     symbols=symbols_list,
-                #     source=source,
-                #     output_dir=current_portfolio_target_dir,
-                #     use_sub_dir=use_sub_dir_for_timestamp_folders,
-                #     merged_filename_prefix=portfolio_specific_merged_prefix,
-                #     symbol_filename_suffix=portfolio_specific_symbol_suffix,
-                #     include_timestamp_in_filename=include_timestamp_in_filenames
-                Helpers.save_multiple_dataframes_to_single_csv(
+                merged_csv_filepath = Helpers.save_multiple_dataframes_to_single_csv(
                     dataframes=dataframes_for_current_portfolio,
                     filename_prefix=portfolio_specific_merged_prefix,
                     output_dir=current_portfolio_target_dir,
                     use_sub_dir=use_sub_dir_for_timestamp_folders,
                     include_timestamp_in_filename=include_timestamp_in_filenames
                 )
-                # all_portfolios_fetched_data[portfolio_name] = fetched_data_for_current_portfolio
-                Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
-                    dataframes=dataframes_for_current_portfolio,
-                    filename_suffix=portfolio_specific_symbol_suffix,
-                    output_dir=current_portfolio_target_dir,
-                    use_sub_dir=use_sub_dir_for_timestamp_folders,
-                    include_timestamp_in_filename=include_timestamp_in_filenames
-                )
+
+                # # Optionally, save individual symbol files (if still needed)
+                # Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
+                #     dataframes=dataframes_for_current_portfolio,
+                #     filename_suffix=portfolio_specific_symbol_suffix,
+                #     output_dir=current_portfolio_target_dir,
+                #     use_sub_dir=use_sub_dir_for_timestamp_folders,
+                #     include_timestamp_in_filename=include_timestamp_in_filenames
+                # )
+
+                # After saving the merged CSV, calculate and save its performance
+                if merged_csv_filepath and os.path.exists(merged_csv_filepath):
+                    print(f"Calculating performance for portfolio '{portfolio_name}' from CSV: {merged_csv_filepath}")
+                    performance_report_output_dir = os.path.join(current_portfolio_target_dir, "performance_reports")
+                    # Ensure the performance report directory exists
+                    os.makedirs(performance_report_output_dir, exist_ok=True)
+                    
+                    Assistant.calculate_portfolio_performance_from_csv(
+                        historical_data_csv_path=merged_csv_filepath,
+                        portfolio_name=portfolio_name, # Use the original portfolio name
+                        # weights=None, # Default to equal weights, or pass specific weights if available
+                        output_dir=performance_report_output_dir,
+                        metrics_filename_prefix="performance_report", # Filename prefix for the report
+                        include_timestamp_in_filename=True # Or False, depending on preference
+                    )
+                else:
+                    print(f"Skipping performance calculation for '{portfolio_name}' as merged CSV path is invalid or file not found.")
+
                 all_portfolios_returned_data[portfolio_name] = dataframes_for_current_portfolio
                 print(f"Successfully processed and saved data for portfolio: '{portfolio_name}'.")
             except Exception as e:
@@ -223,7 +236,7 @@ class Assistant:
         return all_portfolios_returned_data
 
     @staticmethod
-    def fetch_batch_portfolios_and_save_to_csv(portfolios=PORTFOLIOS):
+    def fetch_portfolios_data_and_calculate_performance_to_save_to_csv(portfolios=PORTFOLIOS):
         # Example of fetching a single default portfolio (original behavior)
         # print("--- Running single portfolio fetch (default SYMBOLS from method signature) ---")
         # default_data = Assistant.fetch_history_data_and_save_to_csv_file(period=10) # Short period for test
@@ -257,11 +270,123 @@ class Assistant:
                     print(f"Portfolio '{portfolio_name}': Failed to fetch data or an error occurred.")
         else:
             print("No data returned from batch fetch process.")
-    
-    
+
+    @staticmethod
+    def calculate_portfolio_performance_from_csv(
+        historical_data_csv_path: str,
+        portfolio_name: str = "PortfolioFromCSV",
+        weights: list = None, # Optional: if None, Portfolio will use equal weights
+        # output_dir: str = "data/reports",
+        output_dir: str = REPORTS_DIR,
+        metrics_filename_prefix: str = "perf_report",
+        include_timestamp_in_filename: bool = True
+    ):
+        """
+        Reads historical stock data from a CSV file, calculates portfolio performance,
+        and saves the metrics to another CSV file.
+
+        Args:
+            historical_data_csv_path (str): Path to the input CSV file.
+                                            Expected format: 'time' column, and other columns
+                                            representing stock symbols with their close prices.
+            portfolio_name (str): Name for the portfolio.
+            weights (list, optional): List of weights for each symbol. Defaults to equal weights.
+            output_dir (str): Directory to save the performance metrics CSV.
+            metrics_filename_prefix (str): Prefix for the output metrics CSV file.
+            include_timestamp_in_filename (bool): Whether to include a timestamp in the metrics filename.
+
+        Returns:
+            pd.DataFrame: The DataFrame containing the calculated portfolio performance metrics,
+                          or an empty DataFrame if an error occurs.
+        """
+        print(f"\n--- Running portfolio performance calculation from CSV: {historical_data_csv_path} ---")
+        try:
+            raw_df = pd.read_csv(historical_data_csv_path)
+        except FileNotFoundError:
+            print(f"Error: Historical data CSV file not found at {historical_data_csv_path}")
+            return pd.DataFrame()
+
+        if 'time' not in raw_df.columns:
+            print("Error: 'time' column not found in the historical data CSV.")
+            return pd.DataFrame()
+
+        # Prepare data for Portfolio class: dict of {symbol: DataFrame_with_time_and_close}
+        fetched_data = {}
+        symbols = [col for col in raw_df.columns if col != 'time']
+
+        if not symbols:
+            print("Error: No symbol columns found in the historical data CSV (besides 'time').")
+            return pd.DataFrame()
+
+        for symbol in symbols:
+            # Ensure 'time' is in a consistent format if needed, though Portfolio handles datetime conversion
+            # For Portfolio, each symbol's DataFrame needs 'time' and 'close' columns.
+            symbol_df = raw_df[['time', symbol]].copy()
+            symbol_df.rename(columns={symbol: 'close'}, inplace=True)
+            fetched_data[symbol] = symbol_df
+
+        # Instantiate Portfolio with pre-fetched data
+        # start_date and end_date are not strictly needed here as data is provided
+        portfolio_obj = Portfolio(
+            symbols=symbols,
+            fetched_data=fetched_data,
+            weights=weights,
+            name=portfolio_name
+        )
+
+        # metrics_df = portfolio_obj.get_portfolio_metrics_df(symbols, None, None, fetched_data=fetched_data, weights=weights, name=portfolio_name)
+        metrics_data = portfolio_obj.get_performance_metrics() # This returns a dict or None
+        
+        # if not metrics_df.empty:
+        if metrics_data:
+            metrics_df = pd.DataFrame([metrics_data])
+            # Add portfolio_name as the first column, using the name from the portfolio object
+            metrics_df.insert(0, 'portfolio_name', portfolio_obj.get_name())
+        else:
+            metrics_df = pd.DataFrame() # Empty DataFrame if no metrics were calculated
+        
+        if not metrics_df.empty: # Check if metrics_df was successfully created
+            output_filename = f"{metrics_filename_prefix}_{portfolio_name}"
+            Helpers.save_single_dataframe_to_csv(
+                df=metrics_df,
+                filename_prefix=output_filename,
+                output_dir=output_dir,
+                use_sub_dir=False, # Save directly in output_dir
+                include_timestamp_in_filename=include_timestamp_in_filename
+            )
+            print(f"Portfolio performance metrics for '{portfolio_name}' saved.")
+        else:
+            print(f"Could not calculate performance metrics for portfolio '{portfolio_name}'.")
+        
+        return metrics_df
 
 if __name__ == "__main__":
-    Assistant.fetch_history_data_and_save_to_csv_file()
-    # Assistant.fetch_batch_portfolios_and_save_to_csv()
+    # Assistant.fetch_history_data_and_save_to_csv_file()
+    
+    # --- Example 1: Fetch batch portfolios and save their raw history data ---
+    # This will create CSV files like 'data/batch_portfolio_data/MidTerm/data_YYYYMMDD_HHMMSS/history_MidTerm_YYYYMMDD_HHMM.csv'
+    Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TEST)
+
+    # # --- Example 2: Calculate performance for a portfolio from a pre-existing CSV ---
+    # # Replace with the actual path to your generated historical data CSV
+    # # or have a similar CSV ready.
+    # # IMPORTANT: Update this path to an actual existing CSV file from your system.
+    # sample_historical_csv = "data/batch_portfolio_data/MidTerm/data_20250615_014556/history_MidTerm_20250615_0145.csv" # Placeholder
+    
+    # # This example is now covered by the integrated call within fetch_portfolios_data_and_calculate_performance_to_save_to_csv
+    # # Check if the sample file exists before trying to process it
+    # if os.path.exists(sample_historical_csv):
+    #     Assistant.calculate_portfolio_performance_from_csv(
+    #         historical_data_csv_path=sample_historical_csv,
+    #         portfolio_name="MidTerm", # Changed name to avoid conflict if run after batch
+    # #       output_dir="data/reports", # Changed dir
+    #         output_dir=REPORTS_DIR,
+    #         metrics_filename_prefix="perf_report"
+    #     )
+    # else:
+    #     print(f"\nINFO: The sample historical CSV file for standalone test was not found at '{sample_historical_csv}'.")
+    #     print("If you ran `Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TERM)`, performance is already calculated.")
+    #     print("To run this standalone example, ensure the CSV exists or adjust the path.")
+
 
     

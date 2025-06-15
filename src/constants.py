@@ -1,5 +1,7 @@
 import os
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = PROJECT_DIR + "/data"
+REPORTS_DIR = DATA_DIR + "/reports"
 
 DATA_GDP = PROJECT_DIR + "/data/gdp_data.csv"
 DATA_HISTORY = PROJECT_DIR + "/data/history_data.csv"
@@ -69,26 +71,31 @@ SYMBOLS_VN100 = [
     'VIC', 'VIX', 'VJC', 'VND', 'VNM', 'VPB', 'VPI', 'VRE', 'VSC', 'VTP'
 ]
 
-# VN100
-SYMBOLS_VN100 = [
-    'AAA', 'ACB', 'ANV', 'BCM', 'BID', 'BMP', 'BSI', 'BVH', 'BWE', 'CII',
-    'CMG', 'CTD', 'CTG', 'CTR', 'CTS', 'DBC', 'DCM', 'DGC', 'DGW', 'DIG',
-    'DPM', 'DSE', 'DXG', 'DXS', 'EIB', 'EVF', 'FPT', 'FRT', 'FTS', 'GAS',
-    'GEX', 'GMD', 'GVR', 'HAG', 'HCM', 'HDB', 'HDC', 'HDG', 'HHV', 'HPG',
-    'HSG', 'HT1', 'IMP', 'KBC', 'KDC', 'KDH', 'KOS', 'LPB', 'MBB', 'MSB',
-    'MSN', 'MWG', 'NAB', 'NKG', 'NLG', 'NT2', 'OCB', 'PAN', 'PC1', 'PDR',
-    'PHR', 'PLX', 'PNJ', 'POW', 'PPC', 'PTB', 'PVD', 'PVT', 'REE', 'SAB',
-    'SBT', 'SCS', 'SHB', 'SIP', 'SJS', 'SSB', 'SSI', 'STB', 'SZC', 'TCB',
-    'TCH', 'TLG', 'TPB', 'VCB', 'VCG', 'VCI', 'VGC', 'VHC', 'VHM', 'VIB',
-    'VIC', 'VIX', 'VJC', 'VND', 'VNM', 'VPB', 'VPI', 'VRE', 'VSC', 'VTP'
-]
-
 # Portfolio
+PORTFOLIOS_TEST = {
+    # "DefaultStocks": SYMBOLS,       # e.g., ['ACB', 'FPT']
+    # "LongTerm": SYMBOLS_DH[:5],     # Taking first 5 for a quicker test
+    # "MidTerm": SYMBOLS_TH[:3],      # Taking first 3 for a quicker test
+    "VN30": SYMBOLS_VN30[:2],       # Taking first 2 for a quicker test
+    "VN100": SYMBOLS_VN100[:2],       # Taking first 2 for a quicker test
+    "EmptyTest": [],                # Test case for an empty symbol list
+    "SingleStockTest": ['ACB'],     # Test case for a portfolio with a single stock
+    # "TwoStockTest": ['ACB', 'FPT']  # Test case for a portfolio with 2 stocks
+}
+
 PORTFOLIOS = {
-    "DefaultTwoStocks": SYMBOLS,       # e.g., ['ACB', 'FPT']
-    # "LongTermPicks": SYMBOLS_DH[:5], # Taking first 5 for a quicker test
-    # "MidTermPicks": SYMBOLS_TH[:3],  # Taking first 3 for a quicker test
-    "VN30_Sample": SYMBOLS_VN30[:2], # Taking first 2 for a quicker test
-    "EmptyTest": [],                 # Test case for an empty symbol list
-    "SingleStockTest": ['ACB']       # Test case for a portfolio with a single stock
+    "VN30": SYMBOLS_VN30,       # Taking first 2 for a quicker test
+    "VN100": SYMBOLS_VN100,       # Taking first 2 for a quicker test
+    "LongTerm": SYMBOLS_DH,     # Taking first 5 for a quicker test
+    "MidTerm": SYMBOLS_TH,      # Taking first 3 for a quicker test
+}
+
+PORTFOLIOS_VN = {
+    "VN30": SYMBOLS_VN30,       # Taking first 2 for a quicker test
+    "VN100": SYMBOLS_VN100,       # Taking first 2 for a quicker test
+}
+
+PORTFOLIOS_TERM = {
+    "LongTerm": SYMBOLS_DH,     # Taking first 5 for a quicker test
+    "MidTerm": SYMBOLS_TH,      # Taking first 3 for a quicker test
 }
