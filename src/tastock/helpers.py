@@ -32,7 +32,8 @@ class Helpers():
         Create and return the output directory path.
         If use_sub_dir is True, create a subdirectory with the current timestamp.
         """
-        now_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        now_str = datetime.now().strftime('%Y%m%d')
+        # now_str = datetime.now().strftime('%Y%m%d_%H%M%S')
         # now_str = datetime.now().strftime('%Y%m%d_%H%M%S.%f')[:-3]
         if use_sub_dir:
             final_output_dir = os.path.join(base_output_dir, f'data_{now_str}')

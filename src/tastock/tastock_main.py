@@ -22,15 +22,15 @@ class Assistant:
         period: int = 1251,
         symbols = SYMBOLS, 
         source = DEFAULT_SOURCE, 
-        output_dir = output_dir,
+        output_dir = DATA_DIR + "/historical_data",
         use_sub_dir = True,
         merged_filename_prefix = f"history",
         symbol_filename_suffix = f"_history",
-        include_timestamp_in_filename = True
+        include_timestamp_in_filename = False
     ):
     # def sample_fetch_periods_and_save_to_csv_file():
 
-        print(f'Running {Assistant.fetch_history_data_and_save_to_csv_file.__name__}')
+        print(f'\n--- Running symbols fetch executing from  {Assistant.fetch_history_data_and_save_to_csv_file.__name__} ---')
 
         # Initialize the Fetcher with parameters
         fetcher = Fetcher(
@@ -77,8 +77,8 @@ class Assistant:
         period: int = 1251,
         source: str = DEFAULT_SOURCE,
         base_output_dir: str = output_dir, # Default to module-level 'data'
-        use_sub_dir_for_portfolio_folders: bool = True, # Creates 'base_output_dir/portfolio_name/'
-        use_sub_dir_for_timestamp_folders: bool = True, # Passed to child func, creates '.../data_timestamp/'
+        use_sub_dir_for_portfolio_folders: bool = False, # If True: Creates 'base_output_dir/portfolio_name/'
+        use_sub_dir_for_timestamp_folders: bool = False, # If True: Passed to child func, creates '.../data_timestamp/'
         include_timestamp_in_filenames: bool = True
     ):
         """
@@ -115,7 +115,7 @@ class Assistant:
         #     if not isinstance(symbols_list, list) or not symbols_list:
                 
         all_portfolios_returned_data = {}
-        print(f"Starting optimized batch fetch for {len(portfolios_map)} portfolio(s).")
+        print(f"\n--- Starting optimized batch fetch for {len(portfolios_map)} portfolio(s). ---")
 
         # 1. Collect all unique symbols from all portfolios
         all_unique_symbols = set()
@@ -162,7 +162,7 @@ class Assistant:
                 continue
 
             # print(f"\nProcessing portfolio: '{portfolio_name}' with symbols: {symbols_list}")
-            print(f"\nProcessing and saving for portfolio: '{portfolio_name}' with symbols: {symbols_list_for_portfolio}")
+            print(f"\nProcessing and saving for portfolio executing from '{portfolio_name}' with symbols: {symbols_list_for_portfolio}")
 
             # Filter data for the current portfolio from the master fetched data
             dataframes_for_current_portfolio = {
@@ -208,16 +208,18 @@ class Assistant:
                 # After saving the merged CSV, calculate and save its performance
                 if merged_csv_filepath and os.path.exists(merged_csv_filepath):
                     print(f"Calculating performance for portfolio '{portfolio_name}' from CSV: {merged_csv_filepath}")
-                    performance_report_output_dir = os.path.join(current_portfolio_target_dir, "performance_reports")
+                    # performance_report_output_dir = os.path.join(current_portfolio_target_dir, "performance_reports")
                     # Ensure the performance report directory exists
-                    os.makedirs(performance_report_output_dir, exist_ok=True)
+                    # os.makedirs(performance_report_output_dir, exist_ok=True)
                     
                     Assistant.calculate_portfolio_performance_from_csv(
                         historical_data_csv_path=merged_csv_filepath,
                         portfolio_name=portfolio_name, # Use the original portfolio name
                         # weights=None, # Default to equal weights, or pass specific weights if available
-                        output_dir=performance_report_output_dir,
-                        metrics_filename_prefix="performance_report", # Filename prefix for the report
+                        # output_dir=performance_report_output_dir,
+                        # metrics_filename_prefix="perf", # Filename prefix for the report
+                        output_dir=current_portfolio_target_dir, # Save in the same folder as history CSV
+                        metrics_filename_prefix=f"perf_{portfolio_name}", # Filename prefix for the report
                         include_timestamp_in_filename=True # Or False, depending on preference
                     )
                 else:
@@ -243,16 +245,19 @@ class Assistant:
         # if default_data:
         #     print(f"Fetched data for default symbols: {list(default_data.keys())}")
 
-        print("\n--- Running batch portfolio fetch ---")
+        print(f'\n--- Running batch portfolio fetch from {Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv.__name__} ---')
         
         portfolios_to_process = portfolios
 
         all_portfolios_data = Assistant.fetch_portfolios_data_and_save_to_csv(
             portfolios_map = portfolios_to_process,
             period = 10,  # Using a short period for faster testing
-            base_output_dir = "data/batch_portfolio_data", # Custom base directory for this batch run
-            use_sub_dir_for_portfolio_folders = True, # Creates 'base_output_dir/portfolio_name/'
-            use_sub_dir_for_timestamp_folders = True, # Creates '.../data_timestamp/' inside each portfolio folder
+            # base_output_dir = "data/batch_portfolio_data", # Custom base directory for this batch run
+            base_output_dir = DATA_DIR + "/historical_data", # Custom base directory for this batch run
+            # use_sub_dir_for_portfolio_folders = True, # Creates 'base_output_dir/portfolio_name/'
+            # use_sub_dir_for_timestamp_folders = True, # Creates '.../data_timestamp/' inside each portfolio folder
+            use_sub_dir_for_portfolio_folders = True, # Creates 'base_output_dir/portfolio_name/' (Correct)
+            use_sub_dir_for_timestamp_folders = False, # Save files directly under 'portfolio_name' folder
             include_timestamp_in_filenames = True
         )
 
@@ -278,7 +283,7 @@ class Assistant:
         weights: list = None, # Optional: if None, Portfolio will use equal weights
         # output_dir: str = "data/reports",
         output_dir: str = REPORTS_DIR,
-        metrics_filename_prefix: str = "perf_report",
+        metrics_filename_prefix: str = "perf",
         include_timestamp_in_filename: bool = True
     ):
         """
@@ -346,11 +351,13 @@ class Assistant:
             metrics_df = pd.DataFrame() # Empty DataFrame if no metrics were calculated
         
         if not metrics_df.empty: # Check if metrics_df was successfully created
-            output_filename = f"{metrics_filename_prefix}_{portfolio_name}"
+            # output_filename = f"{metrics_filename_prefix}_{portfolio_name}"
+            output_filename = metrics_filename_prefix # metrics_filename_prefix now includes portfolio_name
             Helpers.save_single_dataframe_to_csv(
                 df=metrics_df,
                 filename_prefix=output_filename,
-                output_dir=output_dir,
+                # output_dir=output_dir,
+                output_dir=output_dir, # This will be current_portfolio_target_dir
                 use_sub_dir=False, # Save directly in output_dir
                 include_timestamp_in_filename=include_timestamp_in_filename
             )
@@ -361,7 +368,7 @@ class Assistant:
         return metrics_df
 
 if __name__ == "__main__":
-    # Assistant.fetch_history_data_and_save_to_csv_file()
+    # Assistant.fetch_history_data_and_save_to_csv_file(period=10, symbols=['ACB', 'FPT'])
     
     # --- Example 1: Fetch batch portfolios and save their raw history data ---
     # This will create CSV files like 'data/batch_portfolio_data/MidTerm/data_YYYYMMDD_HHMMSS/history_MidTerm_YYYYMMDD_HHMM.csv'
@@ -381,12 +388,9 @@ if __name__ == "__main__":
     #         portfolio_name="MidTerm", # Changed name to avoid conflict if run after batch
     # #       output_dir="data/reports", # Changed dir
     #         output_dir=REPORTS_DIR,
-    #         metrics_filename_prefix="perf_report"
+    #         metrics_filename_prefix="perf"
     #     )
     # else:
     #     print(f"\nINFO: The sample historical CSV file for standalone test was not found at '{sample_historical_csv}'.")
     #     print("If you ran `Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TERM)`, performance is already calculated.")
     #     print("To run this standalone example, ensure the CSV exists or adjust the path.")
-
-
-    
