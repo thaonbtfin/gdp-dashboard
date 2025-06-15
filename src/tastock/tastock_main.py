@@ -4,6 +4,7 @@ import os
 sys.path.insert(0, os.getcwd())
 
 import pandas as pd
+import numpy as np # Added for np.nan
 
 from src.tastock.fetcher import Fetcher
 from src.tastock.stock import Stock
@@ -152,6 +153,16 @@ class Assistant:
             return all_portfolios_returned_data
         
         print(f"Successfully fetched data for {len(master_fetched_data)} unique symbol(s).")
+
+        # 4. Calculate and save intrinsic values for all unique symbols
+        Assistant.calculate_and_save_intrinsic_values(
+            symbols_list=unique_symbols_list,
+            period_for_stock_init=period, # Use the same period for Stock class date context
+            source=source,
+            output_dir_for_intrinsic_csv=base_output_dir, # Save at the root of the batch output
+            use_sub_dir_for_timestamp=use_sub_dir_for_timestamp_folders,
+            include_timestamp_in_filename=include_timestamp_in_filenames
+        )
 
         # 3. Process each portfolio for saving using the master fetched data
         for portfolio_name, symbols_list_for_portfolio in portfolios_map.items():
@@ -367,6 +378,72 @@ class Assistant:
         
         return metrics_df
 
+    @staticmethod
+    def calculate_and_save_intrinsic_values(
+        symbols_list: list,
+        period_for_stock_init: int,
+        source: str = DEFAULT_SOURCE,
+        output_dir_for_intrinsic_csv: str = output_dir,
+        use_sub_dir_for_timestamp: bool = False,
+        include_timestamp_in_filename: bool = True,
+        filename_prefix: str = "intrinsic_value_symbols"
+    ):
+        """
+        Calculates Graham intrinsic value for a list of symbols and saves them to a CSV file.
+        The Stock class's _fetch_and_calculate_intrinsic_value is called during its instantiation.
+
+        Args:
+            symbols_list (list): List of stock symbols.
+            period_for_stock_init (int): The period (number of days) to determine start/end dates
+                                         for Stock object instantiation. These dates are primarily
+                                         for the Stock object's historical price fetching context;
+                                         intrinsic value relies on latest financial ratios.
+            source (str): Data source for vnstock.
+            output_dir_for_intrinsic_csv (str): Directory to save the intrinsic value CSV.
+            use_sub_dir_for_timestamp (bool): Whether to use a timestamped subdirectory for the CSV.
+            include_timestamp_in_filename (bool): Whether to include a timestamp in the CSV filename.
+            filename_prefix (str): Prefix for the intrinsic value CSV file.
+        """
+        print(f"\n--- Calculating and Saving Intrinsic Values for {len(symbols_list)} symbol(s) ---")
+        all_symbols_intrinsic_data = []
+        
+        # Determine start/end dates for Stock class instantiation context
+        start_date_stock_init, end_date_stock_init = Helpers.get_start_end_dates(period=period_for_stock_init)
+
+        for symbol in symbols_list:
+            print(f"Processing intrinsic value for: {symbol}")
+            try:
+                stock_obj = Stock(
+                    symbol=symbol,
+                    start_date=start_date_stock_init,
+                    end_date=end_date_stock_init,
+                    source=source
+                )
+                intrinsic_value = stock_obj.get_intrinsic_value_graham()
+                all_symbols_intrinsic_data.append({
+                    'symbol': symbol,
+                    # 'graham_intrinsic_value': f"{intrinsic_value:,.2f}" if intrinsic_value is not None and pd.notna(intrinsic_value) else "N/A"
+                    'graham_intrinsic_value': intrinsic_value if intrinsic_value is not None and pd.notna(intrinsic_value) else np.nan # Save as number or NaN
+                })
+            except Exception as e:
+                print(f"Error calculating intrinsic value for {symbol}: {e}")
+                all_symbols_intrinsic_data.append({'symbol': symbol, 'graham_intrinsic_value': "Error"})
+
+        if all_symbols_intrinsic_data:
+            intrinsic_df = pd.DataFrame(all_symbols_intrinsic_data)
+            Helpers.save_single_dataframe_to_csv(
+                df=intrinsic_df,
+                filename_prefix=filename_prefix,
+                output_dir=output_dir_for_intrinsic_csv,
+                use_sub_dir=use_sub_dir_for_timestamp,
+                include_timestamp_in_filename=include_timestamp_in_filename
+            )
+            print(f"Intrinsic values for all unique symbols saved.")
+        else:
+            print("No intrinsic value data to save.")
+        
+        return pd.DataFrame(all_symbols_intrinsic_data) if all_symbols_intrinsic_data else pd.DataFrame()
+
 if __name__ == "__main__":
     # Assistant.fetch_history_data_and_save_to_csv_file(period=10, symbols=['ACB', 'FPT'])
     
@@ -394,3 +471,4 @@ if __name__ == "__main__":
     #     print(f"\nINFO: The sample historical CSV file for standalone test was not found at '{sample_historical_csv}'.")
     #     print("If you ran `Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TERM)`, performance is already calculated.")
     #     print("To run this standalone example, ensure the CSV exists or adjust the path.")
+    
