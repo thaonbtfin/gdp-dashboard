@@ -3,6 +3,12 @@ import streamlit as st
 import pandas as pd
 import math
 
+from .stock import Stock
+from .helpers import Helpers
+from .calculator import Calculator # Import Calculator
+from ..constants import DEFAULT_PERIOD 
+
+
 class TAstock_def:
 
     @staticmethod
@@ -174,51 +180,293 @@ class TAstock_def:
                 
                 st.metric(label=f'{symbol} Price', value=display_last_price, delta=growth_metric, delta_color=delta_color)
 
+    @staticmethod
+    def _display_intrinsic_values_table(raw_df_for_symbols):    # COMMENTED AS TOO LONG FOR LOADING
+        # """
+        # Displays a table of Graham intrinsic values and other performance metrics
+        # for symbols extracted from the raw_df_for_symbols.
+        # """
+        # st.subheader("Giá trị Nội tại Graham & Chỉ số Hiệu suất", divider="blue")
+
+        # if raw_df_for_symbols.empty:
+        #     st.info("Không có dữ liệu để trích xuất mã cổ phiếu cho việc tính giá trị nội tại.")
+        #     return
+
+        # symbols_list = [col for col in raw_df_for_symbols.columns if col.lower() != 'time']
+
+        # if not symbols_list:
+        #     st.info("Không tìm thấy mã cổ phiếu nào trong dữ liệu để tính giá trị nội tại.")
+        #     return
+
+        # # Define start_date and end_date for Stock object initialization context
+        # start_date, end_date = Helpers.get_start_end_dates(period=DEFAULT_PERIOD)
+
+        # with st.spinner(f"Đang tính toán giá trị nội tại và chỉ số cho {len(symbols_list)} mã..."):
+        #     try:
+        #         # metrics_df = Stock.get_multiple_stocks_metrics_df(
+        #         #     symbols=symbols_list,
+        #         #     start_date=start_date,
+        #         #     end_date=end_date
+        #         # )
+
+        #         # Call the helper that combines fetched intrinsic values with locally calculated performance
+        #         metrics_df = TAstock_def._calculate_combined_stock_metrics(raw_df_for_symbols, symbols_list)
+
+
+        #         if metrics_df is not None and not metrics_df.empty:
+        #             # st.write("Giá trị nội tại Graham và một số chỉ số hiệu suất chính:")
+        #             # display_columns = ['symbol', 'graham_intrinsic_value', 'current_price', 'annualized_return_pct', 'daily_std_dev_pct', 'sharpe_ratio']
+        #             st.write("Giá trị nội tại Graham và các chỉ số hiệu suất chính (hiệu suất tính trên dữ liệu lịch sử đã tải):")
+        #             display_columns = [
+        #                 'symbol', 
+        #                 'graham_intrinsic_value', 
+        #                 'current_price', 
+        #                 'geom_mean_daily_return_pct',
+        #                 'annualized_return_pct', 
+        #                 'daily_std_dev_pct', 
+        #                 'annual_std_dev_pct',
+        #                 # 'sharpe_ratio' # Add if Calculator provides it and it's desired
+        #             ]
+        #             existing_display_columns = [col for col in display_columns if col in metrics_df.columns]
+                    
+        #             # Format Graham Intrinsic Value and Current Price for better readability
+        #             formatted_metrics_df = metrics_df[existing_display_columns].copy()
+        #             # Format numerical columns
+        #             for col_name in ['graham_intrinsic_value', 'current_price']:
+        #                 if col_name in formatted_metrics_df:
+        #                     formatted_metrics_df[col_name] = formatted_metrics_df[col_name].apply(
+        #                         lambda x: f"{x:,.0f}" if pd.notna(x) and isinstance(x, (int, float)) else ("N/A" if pd.isna(x) else x)
+        #                     )
+        #             for col_name in ['geom_mean_daily_return_pct', 'annualized_return_pct', 'daily_std_dev_pct', 'annual_std_dev_pct']:
+        #                 if col_name in formatted_metrics_df:
+        #                      formatted_metrics_df[col_name] = formatted_metrics_df[col_name].apply(
+        #                         lambda x: f"{x:.2%}" if pd.notna(x) and isinstance(x, (int, float)) else ("N/A" if pd.isna(x) else x)
+        #                     )
+                             
+        #             st.dataframe(formatted_metrics_df.set_index('symbol'))
+        #         else:
+        #             st.warning("Không thể tính toán hoặc không có dữ liệu giá trị nội tại/chỉ số cho các mã đã chọn.")
+            
+        #     except Exception as e:
+        #         st.error(f"Đã xảy ra lỗi trong quá trình tính toán giá trị nội tại: {e}")
+        #         st.error("Vui lòng kiểm tra lại dữ liệu đầu vào hoặc cấu hình.")
+        return "n/a"
+
+    @staticmethod
+    def _display_history_table(raw_df):
+        """Displays a table of the raw historical data."""
+
+        if not raw_df.empty:
+            st.dataframe(raw_df) 
+            # try:
+            #     if not raw_# if not raw_df.columns.empty:
+            #         first_column_name = raw_df.columns[0]
+            #         st.dataframe(
+            #             raw_df,
+            #             column_config={
+            #                 first_column_name: st.column_config.Column(fixed=True)
+            #             }
+            #         )
+            #     else:
+            #         st.info("Dữ liệu không có cột nào để hiển thị trong tab chi tiết.")
+            # except TypeError as e:
+            #     if "got an unexpected keyword argument 'fixed'" in str(e):
+            #         st.warning(
+            #             "To freeze columns, please upgrade Streamlit (e.g., `pip install --upgrade streamlit`).\n\n"
+            #             "Displaying table without frozen columns for now."
+            #         )
+            #         st.dataframe(raw_df)  # Fallback for older Streamlit versions
+            #     else:
+            #         st.error(f"Lỗi hiển thị bảng chi tiết: {e}") # Catch other TypeErrors
+            #         raise e  # Re-raise other TypeErrors
+            # except Exception as e:
+            #     st.error(f"Đã xảy ra lỗi khi hiển thị chi tiết dữ liệu: {e}")
+        else:
+            st.info("Không có dữ liệu chi tiết để hiển thị.")
+
+    @staticmethod
+    # Consider adding @st.cache_data if raw_df_for_symbols can be hashed and this is slow
+    def _calculate_combined_stock_metrics(raw_df_for_symbols, symbols_list):
+        # """
+        # Calculates performance metrics from raw_df and fetches intrinsic values & current price.
+        # Returns a DataFrame with combined metrics.
+        # Performance metrics are calculated based on the provided raw_df_for_symbols.
+        # Intrinsic value and current price are fetched.
+        # """
+        # # Part 1: Fetch intrinsic value and current price (requires network for financial data)
+        # # These values are independent of the historical range in raw_df_for_symbols
+        # intrinsic_start_date, intrinsic_end_date = Helpers.get_start_end_dates(period=DEFAULT_PERIOD)
+        
+        # # Stock.get_multiple_stocks_metrics_df fetches its own historical data for its performance metrics.
+        # # We will primarily use it for graham_intrinsic_value and potentially current_price if not easily available otherwise.
+        # # The performance metrics from this call will be overridden by calculations from raw_df_for_symbols.
+        # base_metrics_df = Stock.get_multiple_stocks_metrics_df(
+        #     symbols=symbols_list,
+        #     start_date=intrinsic_start_date, # Context for Stock obj init
+        #     end_date=intrinsic_end_date      # Context for Stock obj init
+        # )
+        
+        # # Ensure base_metrics_df has expected columns even if empty or None
+        # # We are interested in 'symbol', 'graham_intrinsic_value', 'current_price' from this.
+        # # Note: Stock.get_multiple_stocks_metrics_df also returns performance metrics,
+        # # but we will recalculate them from raw_df_for_symbols.
+        # expected_base_cols = ['symbol', 'graham_intrinsic_value', 'current_price']
+        # if base_metrics_df is None:
+        #     base_metrics_df = pd.DataFrame(columns=expected_base_cols)
+        
+        # # Ensure 'symbol' column exists if base_metrics_df was completely empty
+        # if 'symbol' not in base_metrics_df.columns and symbols_list:
+        #     base_metrics_df = pd.DataFrame({'symbol': symbols_list})
+        
+        # for col in expected_base_cols:
+        #     if col not in base_metrics_df.columns:
+        #          base_metrics_df[col] = pd.NA # Add missing expected columns
+
+        # # Part 2: Calculate performance metrics from raw_df_for_symbols
+        # performance_data_list = []
+        
+        # # Prepare raw_df_for_symbols for calculation (ensure 'time' is DatetimeIndex)
+        # df_for_perf_calc = raw_df_for_symbols.copy()
+        # if 'time' in df_for_perf_calc.columns:
+        #     try:
+        #         df_for_perf_calc['time'] = pd.to_datetime(df_for_perf_calc['time'])
+        #         df_for_perf_calc = df_for_perf_calc.set_index('time')
+        #     except Exception as e:
+        #         st.warning(f"Could not process 'time' column in raw_df for performance calculation: {e}")
+        # elif not isinstance(df_for_perf_calc.index, pd.DatetimeIndex): # If 'time' is not a column, assume index is time
+        #     try:
+        #         df_for_perf_calc.index = pd.to_datetime(df_for_perf_calc.index)
+        #     except Exception as e:
+        #         st.warning(f"Could not convert DataFrame index to DatetimeIndex for performance calculation: {e}")
+
+        # for symbol in symbols_list:
+        #     symbol_perf_metrics = {'symbol': symbol} # Start with symbol
+        #     if symbol in df_for_perf_calc.columns and isinstance(df_for_perf_calc.index, pd.DatetimeIndex):
+        #         # Create a DataFrame for the single stock's price series
+        #         # Calculator.calculate_series_performance_metrics expects a 'close' column or specified price_column
+        #         single_stock_df = pd.DataFrame(df_for_perf_calc[symbol].dropna()).rename(columns={symbol: 'close'})
+                
+        #         if len(single_stock_df) > 1:
+        #             try:
+        #                 # Reuse Calculator.calculate_series_performance_metrics
+        #                 perf_metrics = Calculator.calculate_series_performance_metrics(single_stock_df, price_column='close')
+        #                 symbol_perf_metrics.update(perf_metrics)
+        #             except Exception as e:
+        #                 st.error(f"Error calculating performance for {symbol} from raw_df: {e}")
+        #     performance_data_list.append(symbol_perf_metrics)
+
+        # performance_df_from_raw = pd.DataFrame(performance_data_list)
+
+        # # Merge: Use performance metrics from raw_df, and intrinsic/current_price from base_metrics_df
+        # # Merge performance_df_from_raw with selected columns from base_metrics_df
+        # merged_df = pd.merge(performance_df_from_raw, base_metrics_df[['symbol', 'graham_intrinsic_value', 'current_price']], on='symbol', how='left')
+        # return merged_df
+        return "n/a"
 
 class TAstock_st:
 
     @staticmethod
     def history_tab(stock_df):
-        '''
-        # :chart_with_upwards_trend: Stock History Dashboard
-
-        Browse stock price data.
-        '''
 
         from_date, to_date = TAstock_def._display_date_slider(stock_df)
         TAstock_def._display_stock_chart(stock_df, from_date, to_date)
 
-        # The metrics display is now part of _display_stock_chart, which calls _display_stock_metric
 
+    @staticmethod
+    def _display_performance_metrics_table(raw_df):
+        """Displays a table of performance metrics calculated from the history table data."""
+        
+        if raw_df.empty:
+            st.info("Không có dữ liệu để tính toán chỉ số hiệu suất.")
+            return
+            
+        st.header("Chỉ số Hiệu suất", divider="gray")
+        
+        # Extract symbols from raw_df (all columns except 'time')
+        symbols_list = [col for col in raw_df.columns if col != 'time']
+        
+        if not symbols_list:
+            st.info("Không tìm thấy mã chứng khoán nào trong dữ liệu để tính toán chỉ số hiệu suất.")
+            return
+            
+        # Calculate performance metrics directly without fetching external data
+        performance_data_list = []
+        
+        # Prepare raw_df for calculation (ensure 'time' is DatetimeIndex)
+        df_for_perf_calc = raw_df.copy()
+        if 'time' in df_for_perf_calc.columns:
+            try:
+                df_for_perf_calc['time'] = pd.to_datetime(df_for_perf_calc['time'])
+                df_for_perf_calc = df_for_perf_calc.set_index('time')
+            except Exception as e:
+                st.warning(f"Could not process 'time' column for performance calculation: {e}")
+                return
+                
+        for symbol in symbols_list:
+            symbol_perf_metrics = {'symbol': symbol}
+            if symbol in df_for_perf_calc.columns:
+                # Create a DataFrame for the single stock's price series
+                single_stock_df = pd.DataFrame(df_for_perf_calc[symbol].dropna()).rename(columns={symbol: 'close'})
+                
+                if len(single_stock_df) > 1:
+                    try:
+                        # Calculate performance metrics
+                        perf_metrics = Calculator.calculate_series_performance_metrics(single_stock_df, price_column='close')
+                        symbol_perf_metrics.update(perf_metrics)
+                    except Exception as e:
+                        st.error(f"Error calculating performance for {symbol}: {e}")
+            performance_data_list.append(symbol_perf_metrics)
+            
+        metrics_df = pd.DataFrame(performance_data_list)
+        
+        if not metrics_df.empty:
+            # Define metric names and their display labels
+            metric_labels = {
+                'geom_mean_daily_return_pct': 'Lợi nhuận trung bình hàng ngày',
+                'annualized_return_pct': 'Lợi nhuận hàng năm',
+                'daily_std_dev_pct': 'Độ lệch chuẩn hàng ngày',
+                'annual_std_dev_pct': 'Độ lệch chuẩn hàng năm'
+            }
+            
+            # Use all metrics defined in metric_labels
+            all_metrics = list(metric_labels.keys())
+            
+            if metrics_df.shape[0] > 0:
+                # Create a new DataFrame with metrics as rows and symbols as columns
+                formatted_df = pd.DataFrame(index=all_metrics)
+                
+                # Set the index names to display labels
+                formatted_df.index = [metric_labels.get(m, m) for m in formatted_df.index]
+                
+                # Add data for each symbol
+                for _, row in metrics_df.iterrows():
+                    symbol = row['symbol']
+                    for metric in all_metrics:
+                        value = row.get(metric)
+                        if pd.notna(value) and isinstance(value, (int, float)):
+                            formatted_df.loc[metric_labels.get(metric, metric), symbol] = f"{value:.2%}"
+                        else:
+                            formatted_df.loc[metric_labels.get(metric, metric), symbol] = "N/A"
+                
+                st.dataframe(formatted_df)
+            else:
+                st.info("Không có chỉ số hiệu suất nào được tính toán.")
+        else:
+            st.info("Không thể tính toán chỉ số hiệu suất cho các mã chứng khoán.")
+    
     @staticmethod
     def detail_tab(raw_df):  # Renamed parameter for clarity (it's the un-melted df)
         # Assuming 'raw_df' is the DataFrame you want to display
-        if not raw_df.empty:
-            try:
-                if not raw_df.columns.empty:
-                    first_column_name = raw_df.columns[0]
-                    st.dataframe(
-                        raw_df,
-                        column_config={
-                            first_column_name: st.column_config.Column(fixed=True)
-                        }
-                    )
-                else:
-                    st.info("Dữ liệu không có cột nào để hiển thị trong tab chi tiết.")
-            except TypeError as e:
-                if "got an unexpected keyword argument 'fixed'" in str(e):
-                    st.warning(
-                        "To freeze columns, please upgrade Streamlit (e.g., `pip install --upgrade streamlit`).\n\n"
-                        "Displaying table without frozen columns for now."
-                    )
-                    st.dataframe(raw_df)  # Fallback for older Streamlit versions
-                else:
-                    st.error(f"Lỗi hiển thị bảng chi tiết: {e}") # Catch other TypeErrors
-                    raise e  # Re-raise other TypeErrors
-            except Exception as e:
-                st.error(f"Đã xảy ra lỗi khi hiển thị chi tiết dữ liệu: {e}")
-        else:
-            # This message is usually preempted by checks in streamlit_app_tastock.py
-            st.info("Không có dữ liệu chi tiết để hiển thị.")
+        
+        st.header("Chi tiết Dữ liệu Lịch sử", divider="gray")
+
+        TAstock_def._display_history_table(raw_df)
+        
+        # Display performance metrics table after history table
+        TAstock_st._display_performance_metrics_table(raw_df)
+        
+        # Add the intrinsic value table display below the historical data table
+        # if not raw_df.empty: # Only attempt if there's raw_df to extract symbols from
+            # TAstock_def._display_intrinsic_values_table(raw_df)
 
     
