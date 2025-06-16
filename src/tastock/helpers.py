@@ -48,8 +48,30 @@ class Helpers():
         """
         Return the current date and time as a string in 'YYYYMMDD_HHMM' format.
         """
-        # return datetime.now().strftime('%Y%m%d_%H%M')
-        return datetime.now().strftime('%Y%m%d')
+
+        now_local = datetime.now().astimezone() # Gets local-aware datetime
+        tz_name = now_local.tzname() # Gets the timezone name, e.g., "UTC", "ICT"
+        
+        # Get UTC offset string like +HHMM or -HHMM (e.g., "+0000", "+0700", "-0530")
+        raw_offset_from_strftime = now_local.strftime('%z')
+        
+        formatted_offset_display = ""
+        if raw_offset_from_strftime: # This should generally be true for an aware object
+            sign = raw_offset_from_strftime[0]
+            hh_str = raw_offset_from_strftime[1:3]
+            mm_str = raw_offset_from_strftime[3:5]
+            
+            hh_int = int(hh_str) # Convert for display, e.g., "07" -> 7
+            
+            if mm_str == "00":
+                formatted_offset_display = f"UTC{sign}{hh_int}" # e.g., UTC+0, UTC+7
+            else:
+                formatted_offset_display = f"UTC{sign}{hh_int}:{mm_str}" # e.g., UTC+5:30
+        
+        print(f"Current local datetime: {now_local.strftime('%Y-%m-%d %H:%M:%S')} {tz_name} ({formatted_offset_display})")
+        # return datetime.now().strftime('%Y%m%d_%H%M%S')
+        return datetime.now().strftime('%Y%m%d_%H%M')
+        # return datetime.now().strftime('%Y%m%d')
 
     # @staticmethod
     def get_start_end_dates(period=DEFAULT_PERIOD):
