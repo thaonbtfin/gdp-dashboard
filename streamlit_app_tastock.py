@@ -17,21 +17,38 @@ st.set_page_config(
 # Load and preprocess data
 # ============================
 
-# stock_df = TAstock_def.get_stock_data()
+
 
 # ============================
 # Streamlit UI
 # ============================
 
-with st.spinner("Đang tải dữ liệu và huấn luyện mô hình..."):
+with st.spinner("Đang tải dữ liệu..."):
     df = Streamlit_def.load_data()
-    # Melt the raw DataFrame to get the 'Symbol' column
-    stock_df_melted = TAstock_def.get_stock_data(df.copy()) # Use df.copy() if df is used elsewhere in its raw form
 
-history_tab, detail_tab  = st.tabs(["📁 History", "🔍 Stock details"])
+# Main check for loaded data
+if df.empty:
+    st.warning("Không có dữ liệu để hiển thị. Vui lòng chọn nguồn dữ liệu hợp lệ, tải lên tệp CSV, hoặc kiểm tra lại thông báo lỗi (nếu có).")
+    # Still create tabs so user can attempt to load data again.
+    # Content within tabs will show specific messages.
+
+history_tab, detail_tab  = st.tabs(["📁 History", "🔍 Details"])
 
 with history_tab:
-    TAstock_st.history_tab(stock_df_melted)
+    if df.empty:
+        st.info("Không có dữ liệu để hiển thị biểu đồ lịch sử. Vui lòng chọn hoặc tải lên dữ liệu hợp lệ.")
+    else:
+        # Process data for history tab only if raw data (df) is available
+        stock_df_melted = TAstock_def.get_stock_data(df.copy())
+        if stock_df_melted.empty:
+            # This implies df was not empty, but get_stock_data resulted in an empty df.
+            # TAstock_def.get_stock_data should have shown specific warnings/errors.
+            st.info("Không thể xử lý dữ liệu để hiển thị biểu đồ lịch sử. Vui lòng kiểm tra định dạng dữ liệu hoặc các thông báo lỗi trước đó.")
+        else:
+            TAstock_st.history_tab(stock_df_melted)
 
 with detail_tab:
-    TAstock_st.detail_tab(df)
+    if df.empty:
+        st.info("Không có dữ liệu để hiển thị chi tiết. Vui lòng chọn hoặc tải lên dữ liệu hợp lệ.")
+    else:
+        TAstock_st.detail_tab(df) # df is the raw dataframe
