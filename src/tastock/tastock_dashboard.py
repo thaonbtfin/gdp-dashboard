@@ -9,28 +9,45 @@ class TAstock_def:
     def get_stock_data(df):
         """Grab stock history data from a CSV file and melt it."""
 
-        # DATA_FILENAME = Path(__file__).parent / 'data/history_data.csv'
-        # DATA_FILENAME = DATA_HISTORY
-        # raw_stock_df = pd.read_csv(DATA_FILENAME)
+        if df.empty:
+            # This message can be shown if df is empty from the start.
+            # st.info("Dữ liệu đầu vào trống, không thể xử lý cho biểu đồ lịch sử.")
+            return pd.DataFrame()
 
         raw_stock_df = df
 
         # Identify symbol columns (all columns except 'time')
+        if 'time' not in raw_stock_df.columns:
+            st.warning("Cột 'time' không tồn tại trong dữ liệu. Không thể tạo biểu đồ lịch sử.")
+            return pd.DataFrame()
+            
         symbol_columns = [col for col in raw_stock_df.columns if col != 'time']
+        if not symbol_columns:
+            st.warning("Không tìm thấy cột mã chứng khoán nào (ngoài cột 'time'). Vui lòng kiểm tra định dạng dữ liệu để tạo biểu đồ.")
+            return pd.DataFrame()
 
         # Melt the DataFrame
-        # 'time' column remains as is.
-        # Other columns (stock symbols) are unpivoted into two new columns: 'Symbol' and 'Price'.
-        stock_df = raw_stock_df.melt(
-            id_vars=['time'],
-            value_vars=symbol_columns,
-            var_name='Symbol',
-            value_name='Price',
-        )
+        try:
+            stock_df = raw_stock_df.melt(
+                id_vars=['time'],
+                value_vars=symbol_columns,
+                var_name='Symbol',
+                value_name='Price',
+            )
+        except Exception as e:
+            st.error(f"Lỗi khi chuyển đổi dữ liệu (melt) cho biểu đồ: {e}")
+            return pd.DataFrame()
 
         # Convert 'time' from YYYYMMDD integer to datetime objects
-        stock_df['time'] = pd.to_datetime(stock_df['time'], format='%Y%m%d')
-        
+        # This conversion should ideally happen once, e.g., in Streamlit_def.load_data
+        # If it's already datetime, format might not be needed or could cause issues.
+        # Assuming 'time' in raw_stock_df might not be datetime yet from all sources.
+        try:
+            stock_df['time'] = pd.to_datetime(stock_df['time']) # More robust if already datetime
+        except Exception as e:
+            st.error(f"Lỗi khi chuyển đổi cột 'time' sang định dạng ngày tháng cho biểu đồ: {e}.")
+            return pd.DataFrame()
+
         # Remove rows where Price is NaN, as st.line_chart might have issues
         stock_df.dropna(subset=['Price'], inplace=True)
 
@@ -174,28 +191,34 @@ class TAstock_st:
         # The metrics display is now part of _display_stock_chart, which calls _display_stock_metric
 
     @staticmethod
-    def detail_tab(stock_df):
-        # Assuming 'stock_df' is the DataFrame you want to display
-        if not stock_df.empty:
+    def detail_tab(raw_df):  # Renamed parameter for clarity (it's the un-melted df)
+        # Assuming 'raw_df' is the DataFrame you want to display
+        if not raw_df.empty:
             try:
-                first_column_name = stock_df.columns[0]
-                st.dataframe(
-                    stock_df,
-                    column_config={
-                        # This will freeze the first column (e.g., 'time')
-                        first_column_name: st.column_config.Column(fixed=True)
-                    }
-                )
+                if not raw_df.columns.empty:
+                    first_column_name = raw_df.columns[0]
+                    st.dataframe(
+                        raw_df,
+                        column_config={
+                            first_column_name: st.column_config.Column(fixed=True)
+                        }
+                    )
+                else:
+                    st.info("Dữ liệu không có cột nào để hiển thị trong tab chi tiết.")
             except TypeError as e:
                 if "got an unexpected keyword argument 'fixed'" in str(e):
                     st.warning(
                         "To freeze columns, please upgrade Streamlit (e.g., `pip install --upgrade streamlit`).\n\n"
                         "Displaying table without frozen columns for now."
                     )
-                    st.dataframe(stock_df)  # Fallback for older Streamlit versions
+                    st.dataframe(raw_df)  # Fallback for older Streamlit versions
                 else:
+                    st.error(f"Lỗi hiển thị bảng chi tiết: {e}") # Catch other TypeErrors
                     raise e  # Re-raise other TypeErrors
+            except Exception as e:
+                st.error(f"Đã xảy ra lỗi khi hiển thị chi tiết dữ liệu: {e}")
         else:
-            st.write("DataFrame is empty.")
+            # This message is usually preempted by checks in streamlit_app_tastock.py
+            st.info("Không có dữ liệu chi tiết để hiển thị.")
 
     
