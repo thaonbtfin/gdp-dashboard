@@ -87,15 +87,15 @@ PORTFOLIOS = {
     "VN30": SYMBOLS_VN30,       # Taking first 2 for a quicker test
     "VN100": SYMBOLS_VN100,       # Taking first 2 for a quicker test
     "LongTerm": SYMBOLS_DH,     # Taking first 5 for a quicker test
-    "MidTerm": SYMBOLS_TH,      # Taking first 3 for a quicker test
+    "MidTerm": SYMBOLS_TH      # Taking first 3 for a quicker test
 }
 
 PORTFOLIOS_VN = {
     "VN30": SYMBOLS_VN30,       # Taking first 2 for a quicker test
-    "VN100": SYMBOLS_VN100,       # Taking first 2 for a quicker test
+    "VN100": SYMBOLS_VN100       # Taking first 2 for a quicker test
 }
 
 PORTFOLIOS_TERM = {
     "LongTerm": SYMBOLS_DH,     # Taking first 5 for a quicker test
-    "MidTerm": SYMBOLS_TH,      # Taking first 3 for a quicker test
+    "MidTerm": SYMBOLS_TH      # Taking first 3 for a quicker test
 }

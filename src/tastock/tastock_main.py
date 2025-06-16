@@ -260,7 +260,7 @@ class Assistant:
         return all_portfolios_returned_data
 
     @staticmethod
-    def fetch_portfolios_data_and_calculate_performance_to_save_to_csv(portfolios=PORTFOLIOS):
+    def fetch_portfolios_data_and_calculate_performance_to_save_to_csv(period=10, portfolios=PORTFOLIOS):
 
         print(f'\n--- Running batch portfolio fetch from {Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv.__name__} ---')
         
@@ -268,7 +268,7 @@ class Assistant:
 
         all_portfolios_data = Assistant.fetch_portfolios_data_and_save_to_csv(
             portfolios_map = portfolios_to_process,
-            period = 10,  # Using a short period for faster testing
+            period = period,  # Using a short period for faster testing
             # base_output_dir = "data/batch_portfolio_data", # Custom base directory for this batch run
             base_output_dir = DATA_DIR + "/historical_data/" + Helpers.name_today_datetime(), # Custom base directory for this batch run
             # use_sub_dir_for_portfolio_folders = True, # Creates 'base_output_dir/portfolio_name/'
@@ -463,5 +463,5 @@ if __name__ == "__main__":
     #   PORTFOLIOS_TEST = {"VN30": ['ACB', 'BCM'], "VN100": ['AAA', 'ACB'], ...}
     # The method primarily produces side effects (creating files) and prints summaries to the console.
     # It internally calls `fetch_portfolios_data_and_save_to_csv` which returns a dictionary mapping portfolio names to dictionaries of fetched DataFrames ({symbol: DataFrame}), or None/empty dict if errors/no data.
-    Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TEST)
-    # Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TEST["VN30"])
+    # Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TEST)
+    Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(period=10, portfolios={"LongTerm": PORTFOLIOS['LongTerm']})
