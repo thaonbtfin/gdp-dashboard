@@ -19,7 +19,7 @@ output_dir = 'data'
 class Assistant:
 
     @staticmethod
-    def fetch_history_data_and_save_to_csv_file(
+    def fetch_history_data_and_save_to_csv_file(    # THIS IS GOING TO BE DELETED AS OUTDATE FOR USE
         period: int = 1251,
         symbols = SYMBOLS, 
         source = DEFAULT_SOURCE, 
@@ -29,47 +29,49 @@ class Assistant:
         symbol_filename_suffix = f"_history",
         include_timestamp_in_filename = False
     ):
-    # def sample_fetch_periods_and_save_to_csv_file():
+    # # def sample_fetch_periods_and_save_to_csv_file():
 
         print(f'\n--- Running symbols fetch executing from  {Assistant.fetch_history_data_and_save_to_csv_file.__name__} ---')
+        print(f'THIS IS GOING TO BE DELETED AS OUTDATE FOR USE')
 
-        # Initialize the Fetcher with parameters
-        fetcher = Fetcher(
-                symbols = symbols,
-                source = source,
-                output_dir = output_dir
-            )
+    #     # Initialize the Fetcher with parameters
+    #     fetcher = Fetcher(
+    #             symbols = symbols,
+    #             source = source,
+    #             output_dir = output_dir
+    #         )
         
-        # Fetch historical data for the given period (number of business days)
-        fetched_df_period = fetcher.fetch_history_to_dataframe_for_periods(
-            period = period,
-            symbols = symbols
-        )
-        # print(f'{fetched_df_period}')  # Uncomment to inspect fetched data
+    #     # Fetch historical data for the given period (number of business days)
+    #     fetched_df_period = fetcher.fetch_history_to_dataframe_for_periods(
+    #         period = period,
+    #         symbols = symbols
+    #     )
+    #     # print(f'{fetched_df_period}')  # Uncomment to inspect fetched data
         
-        if not fetched_df_period or all(df.empty for df in fetched_df_period.values()):
-            print(f"No data fetched or all dataframes are empty for symbols: {symbols} for period: {period} in fetch_history_data_and_save_to_csv_file. Skipping save.")
-            return {} # Return empty dict if no data or all fetched dataframes are empty
+    #     if not fetched_df_period or all(df.empty for df in fetched_df_period.values()):
+    #         print(f"No data fetched or all dataframes are empty for symbols: {symbols} for period: {period} in fetch_history_data_and_save_to_csv_file. Skipping save.")
+    #         return {} # Return empty dict if no data or all fetched dataframes are empty
 
-        # Save the fetched DataFrame to a CSV file
-        Helpers.save_multiple_dataframes_to_single_csv(
-                dataframes = fetched_df_period,
-                filename_prefix = merged_filename_prefix,
-                output_dir = output_dir, # Uses the output_dir defined in sample.py
-                use_sub_dir = use_sub_dir, # Saves directly into output_dir without creating a 'data_timestamp' subdir
-                include_timestamp_in_filename = include_timestamp_in_filename
-            )    
+    #     # Save the fetched DataFrame to a CSV file
+    #     Helpers.save_multiple_dataframes_to_single_csv(
+    #             dataframes = fetched_df_period,
+    #             filename_prefix = merged_filename_prefix,
+    #             output_dir = output_dir, # Uses the output_dir defined in sample.py
+    #             use_sub_dir = use_sub_dir, # Saves directly into output_dir without creating a 'data_timestamp' subdir
+    #             include_timestamp_in_filename = include_timestamp_in_filename
+    #         )    
 
-        # Save each symbol's DataFrame into separate CSV files in a folder
-        Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
-            dataframes = fetched_df_period,
-            filename_suffix = symbol_filename_suffix,
-            output_dir = output_dir, # Uses the output_dir defined in sample.py
-            use_sub_dir = use_sub_dir, # Saves directly into output_dir without creating a 'data_timestamp' subdir
-            include_timestamp_in_filename = include_timestamp_in_filename
-        )
+    #     # Save each symbol's DataFrame into separate CSV files in a folder
+    #     Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
+    #         dataframes = fetched_df_period,
+    #         filename_suffix = symbol_filename_suffix,
+    #         output_dir = output_dir, # Uses the output_dir defined in sample.py
+    #         use_sub_dir = use_sub_dir, # Saves directly into output_dir without creating a 'data_timestamp' subdir
+    #         include_timestamp_in_filename = include_timestamp_in_filename
+    #     )
 
-        return fetched_df_period
+        # return fetched_df_period
+        return print(f'THIS IS GOING TO BE DELETED AS OUTDATE FOR USE')
 
     @staticmethod
     def fetch_portfolios_data_and_save_to_csv(
@@ -80,7 +82,7 @@ class Assistant:
         base_output_dir: str = output_dir, # Default to module-level 'data'
         use_sub_dir_for_portfolio_folders: bool = False, # If True: Creates 'base_output_dir/portfolio_name/'
         use_sub_dir_for_timestamp_folders: bool = False, # If True: Passed to child func, creates '.../data_timestamp/'
-        include_timestamp_in_filenames: bool = True
+        include_timestamp_in_filenames: bool = False
     ):
         """
         Fetches history data for multiple portfolios, saves CSV files for each,
@@ -109,12 +111,7 @@ class Assistant:
                   the dictionaries of DataFrames ({symbol: DataFrame}) for that portfolio.
                   Returns None for a portfolio if an error occurred or it was skipped.
         """
-        # all_portfolios_fetched_data = {}
-        # print(f"Starting batch fetch for {len(portfolios_map)} portfolio(s).")
 
-        # for portfolio_name, symbols_list in portfolios_map.items():
-        #     if not isinstance(symbols_list, list) or not symbols_list:
-                
         all_portfolios_returned_data = {}
         print(f"\n--- Starting optimized batch fetch for {len(portfolios_map)} portfolio(s). ---")
 
@@ -153,6 +150,20 @@ class Assistant:
             return all_portfolios_returned_data
         
         print(f"Successfully fetched data for {len(master_fetched_data)} unique symbol(s).")
+
+        # Save historical data for all unique symbols to a single CSV file
+        # This file will be saved in the timestamped base_output_dir.
+        if master_fetched_data and not all(df.empty for df in master_fetched_data.values()):
+            print(f"\nSaving historical data for all {len(master_fetched_data)} unique fetched symbols to a single CSV...")
+            Helpers.save_multiple_dataframes_to_single_csv(
+                dataframes=master_fetched_data,
+                filename_prefix="history_data_symbols", # Descriptive prefix
+                output_dir=base_output_dir, # This is the timestamped directory from the caller
+                use_sub_dir=False, # Save directly in base_output_dir
+                include_timestamp_in_filename=include_timestamp_in_filenames # Consistent with other files
+            )
+        else:
+            print("Skipping save of all unique symbols history CSV as no master data was fetched or all was empty.")
 
         # 4. Calculate and save intrinsic values for all unique symbols
         Assistant.calculate_and_save_intrinsic_values(
@@ -250,11 +261,6 @@ class Assistant:
 
     @staticmethod
     def fetch_portfolios_data_and_calculate_performance_to_save_to_csv(portfolios=PORTFOLIOS):
-        # Example of fetching a single default portfolio (original behavior)
-        # print("--- Running single portfolio fetch (default SYMBOLS from method signature) ---")
-        # default_data = Assistant.fetch_history_data_and_save_to_csv_file(period=10) # Short period for test
-        # if default_data:
-        #     print(f"Fetched data for default symbols: {list(default_data.keys())}")
 
         print(f'\n--- Running batch portfolio fetch from {Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv.__name__} ---')
         
@@ -264,7 +270,7 @@ class Assistant:
             portfolios_map = portfolios_to_process,
             period = 10,  # Using a short period for faster testing
             # base_output_dir = "data/batch_portfolio_data", # Custom base directory for this batch run
-            base_output_dir = DATA_DIR + "/historical_data", # Custom base directory for this batch run
+            base_output_dir = DATA_DIR + "/historical_data/" + Helpers.name_today_datetime(), # Custom base directory for this batch run
             # use_sub_dir_for_portfolio_folders = True, # Creates 'base_output_dir/portfolio_name/'
             # use_sub_dir_for_timestamp_folders = True, # Creates '.../data_timestamp/' inside each portfolio folder
             use_sub_dir_for_portfolio_folders = True, # Creates 'base_output_dir/portfolio_name/' (Correct)
@@ -445,30 +451,17 @@ class Assistant:
         return pd.DataFrame(all_symbols_intrinsic_data) if all_symbols_intrinsic_data else pd.DataFrame()
 
 if __name__ == "__main__":
-    # Assistant.fetch_history_data_and_save_to_csv_file(period=10, symbols=['ACB', 'FPT'])
-    
-    # --- Example 1: Fetch batch portfolios and save their raw history data ---
-    # This will create CSV files like 'data/batch_portfolio_data/MidTerm/data_YYYYMMDD_HHMMSS/history_MidTerm_YYYYMMDD_HHMM.csv'
+    # --- Fetch batch portfolios and save their raw history data ---
+    # This method orchestrates several actions for a collection of portfolios (e.g., PORTFOLIOS_TEST):
+    # 1. Fetches historical stock data for all unique symbols across all defined portfolios.
+    # 2. For each portfolio:
+    #    a. Saves a merged CSV of historical data for all its symbols (e.g., 'data/historical_data/YYYYMMDD_HHMM/VN30/history_VN30_timestamp.csv').
+    #    b. Saves individual CSV files for each symbol within that portfolio's folder (e.g., 'data/historical_data/YYYYMMDD_HHMM/VN30/symbols/ACB_VN30_history_timestamp.csv').
+    #    c. Calculates performance metrics based on the merged historical data and saves these metrics to a CSV (e.g., 'data/historical_data/YYYYMMDD_HHMM/VN30/perf_VN30_timestamp.csv').
+    # 3. Calculates Graham intrinsic values for all unique symbols fetched and saves them to a single CSV file (e.g., 'data/historical_data/YYYYMMDD_HHMM/intrinsic_value_symbols_timestamp.csv').
+    # The PORTFOLIOS_TEST input is a dictionary like:
+    #   PORTFOLIOS_TEST = {"VN30": ['ACB', 'BCM'], "VN100": ['AAA', 'ACB'], ...}
+    # The method primarily produces side effects (creating files) and prints summaries to the console.
+    # It internally calls `fetch_portfolios_data_and_save_to_csv` which returns a dictionary mapping portfolio names to dictionaries of fetched DataFrames ({symbol: DataFrame}), or None/empty dict if errors/no data.
     Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TEST)
-
-    # # --- Example 2: Calculate performance for a portfolio from a pre-existing CSV ---
-    # # Replace with the actual path to your generated historical data CSV
-    # # or have a similar CSV ready.
-    # # IMPORTANT: Update this path to an actual existing CSV file from your system.
-    # sample_historical_csv = "data/batch_portfolio_data/MidTerm/data_20250615_014556/history_MidTerm_20250615_0145.csv" # Placeholder
-    
-    # # This example is now covered by the integrated call within fetch_portfolios_data_and_calculate_performance_to_save_to_csv
-    # # Check if the sample file exists before trying to process it
-    # if os.path.exists(sample_historical_csv):
-    #     Assistant.calculate_portfolio_performance_from_csv(
-    #         historical_data_csv_path=sample_historical_csv,
-    #         portfolio_name="MidTerm", # Changed name to avoid conflict if run after batch
-    # #       output_dir="data/reports", # Changed dir
-    #         output_dir=REPORTS_DIR,
-    #         metrics_filename_prefix="perf"
-    #     )
-    # else:
-    #     print(f"\nINFO: The sample historical CSV file for standalone test was not found at '{sample_historical_csv}'.")
-    #     print("If you ran `Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TERM)`, performance is already calculated.")
-    #     print("To run this standalone example, ensure the CSV exists or adjust the path.")
-    
+    # Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv(PORTFOLIOS_TEST["VN30"])
