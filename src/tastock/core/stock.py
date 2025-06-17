@@ -1,9 +1,15 @@
+"""
+Stock Module
+
+This module provides the Stock class for representing a stock and its performance metrics.
+"""
+
 import pandas as pd
 import numpy as np
 from vnstock import Vnstock
-from .fetcher import Fetcher
 from src.constants import DEFAULT_SOURCE, DEFAULT_OUTPUT_DIR
-from .calculator import Calculator
+from ..data.fetcher import Fetcher
+from ..data.calculator import Calculator
 
 class Stock:
     """
@@ -11,7 +17,7 @@ class Stock:
     It fetches its own data upon initialization.
     """
 
-    def __init__(self, symbol: str, start_date: str, end_date: str, source: str = DEFAULT_SOURCE):
+    def __init__(self, symbol: str, start_date: str = None, end_date: str = None, source: str = DEFAULT_SOURCE):
         self.symbol = symbol
         self.start_date = start_date
         self.end_date = end_date
@@ -21,9 +27,10 @@ class Stock:
         self.financial_ratios_df = None
         self.intrinsic_value_graham = None
 
-        self._fetch_data()
-        self._calculate_metrics()
-        self._fetch_and_calculate_intrinsic_value()
+        if start_date and end_date:
+            self._fetch_data()
+            self._calculate_metrics()
+            self._fetch_and_calculate_intrinsic_value()
 
     def _fetch_data(self):
         """

@@ -1,16 +1,25 @@
+"""
+Dashboard Module
+
+This module provides the dashboard UI components for the tastock application.
+"""
+
 import streamlit as st
 import pandas as pd
 import math
 import os
 
-from .stock import Stock
-from .helpers import Helpers
-from .calculator import Calculator
-from .data_manager import DataManager
-from ..constants import DEFAULT_PERIOD, DATA_DIR
+from ..core.stock import Stock
+from ..utils.helpers import Helpers
+from ..data.calculator import Calculator
+from ..data.manager import DataManager
+from src.constants import DEFAULT_PERIOD, DATA_DIR
 
 
 class TAstock_def:
+    """
+    Defines utility functions for the tastock dashboard.
+    """
 
     @staticmethod
     def get_stock_data(df):
@@ -46,9 +55,6 @@ class TAstock_def:
             return pd.DataFrame()
 
         # Convert 'time' from YYYYMMDD integer to datetime objects
-        # This conversion should ideally happen once, e.g., in Streamlit_def.load_data
-        # If it's already datetime, format might not be needed or could cause issues.
-        # Assuming 'time' in raw_stock_df might not be datetime yet from all sources.
         try:
             stock_df['time'] = pd.to_datetime(stock_df['time']) # More robust if already datetime
         except Exception as e:
@@ -86,7 +92,7 @@ class TAstock_def:
         )
 
         return from_date, to_date
-
+    
     @staticmethod
     def _display_stock_chart(stock_df, from_date, to_date):
         """Displays the multiselect for symbols and the stock price chart."""
@@ -141,7 +147,7 @@ class TAstock_def:
 
         # Call the new metrics display method
         TAstock_def._display_stock_metric(selected_symbols, filtered_stock_df, from_date, to_date)
-
+        
     @staticmethod
     def _display_stock_metric(selected_symbols, filtered_stock_df, from_date, to_date):
         """Displays key stock metrics for the selected symbols and date range."""
@@ -180,9 +186,7 @@ class TAstock_def:
                     delta_color = 'normal' if growth_multiple >= 1 else 'inverse'
                 
                 st.metric(label=f'{symbol} Price', value=display_last_price, delta=growth_metric, delta_color=delta_color)
-
-    # This method was removed as it's not currently used
-
+                
     @staticmethod
     def _display_history_table(raw_df):
         """Displays a table of the raw historical data."""
@@ -192,12 +196,15 @@ class TAstock_def:
         else:
             st.info("Không có dữ liệu chi tiết để hiển thị.")
 
-    # This method was removed as it's not currently used
 
 class TAstock_st:
+    """
+    Defines the streamlit UI components for the tastock dashboard.
+    """
 
     @staticmethod
     def history_tab(stock_df):
+        """Displays the history tab with stock chart and metrics."""
         # Check if we have cached moving averages data
         has_cached_ma = False
         try:
@@ -209,8 +216,7 @@ class TAstock_st:
             
         from_date, to_date = TAstock_def._display_date_slider(stock_df)
         TAstock_def._display_stock_chart(stock_df, from_date, to_date)
-
-
+        
     @staticmethod
     def _display_performance_metrics_table(raw_df):
         """Displays a table of performance metrics calculated from the history table data."""
@@ -344,7 +350,25 @@ class TAstock_st:
                         iv_df = data_manager.load_latest_data('intrinsic')
                         if not iv_df.empty and 'symbol' in iv_df.columns and 'intrinsic_value' in iv_df.columns:
                             st.header("Giá trị Nội tại (Từ dữ liệu đã lưu)", divider="gray")
-                            st.dataframe(iv_df)
+                            
+                            # Format intrinsic values as a transposed table (symbols as columns)
+                            formatted_iv_df = pd.DataFrame(index=['Giá trị Nội tại'])
+                            
+                            for _, row in iv_df.iterrows():
+                                symbol = row['symbol']
+                                value = row.get('intrinsic_value')
+                                if pd.notna(value):
+                                    try:
+                                        # Try to convert to float if it's a string
+                                        if isinstance(value, str):
+                                            value = float(value.replace(',', ''))
+                                        formatted_iv_df.loc['Giá trị Nội tại', symbol] = f"{value:,.2f}"
+                                    except:
+                                        formatted_iv_df.loc['Giá trị Nội tại', symbol] = value
+                                else:
+                                    formatted_iv_df.loc['Giá trị Nội tại', symbol] = "N/A"
+                            
+                            st.dataframe(formatted_iv_df)
                     except Exception as e:
                         # If loading intrinsic values fails, just continue
                         pass
@@ -358,5 +382,3 @@ class TAstock_st:
         
         # Fall back to calculating performance metrics from raw data
         TAstock_st._display_performance_metrics_table(raw_df)
-
-    

@@ -5,23 +5,20 @@ This module provides the Fetcher class for fetching historical stock data for gi
 saving each symbol's data into CSV files, and merging them on the 'time' column into a final CSV.
 
 Usage (as a script):
-    python -m models.fetcher --symbols ACB,VCB --start_date 2024-01-01 --end_date 2024-06-01 --source VCI
+    python -m src.tastock.data.fetcher --symbols ACB,VCB --start_date 2024-01-01 --end_date 2024-06-01 --source VCI
 
 Or import and use Fetcher in your own code:
-    from models.fetcher import Fetcher = Fetcher(symbols=['ACB', 'VCB'], start_date='2024-01-01', end_date='2024-06-01', source='VCI')
-    fetcher.fetch_history_and_merge_csv()
+    from src.tastock.data.fetcher import Fetcher
+    fetcher = Fetcher(symbols=['ACB', 'VCB'], start_date='2024-01-01', end_date='2024-06-01', source='VCI')
+    dataframes = fetcher.fetch_history_to_dataframe_from_start_end_date()
 """
-
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
 import pandas as pd
 
 from vnstock import Vnstock
 from src.constants import DEFAULT_SYMBOL, DEFAULT_START_DATE, DEFAULT_END_DATE, DEFAULT_SOURCE, DEFAULT_OUTPUT_DIR
-from .helpers import Helpers
+from ..utils.helpers import Helpers
 
 class Fetcher():
     """
@@ -47,7 +44,6 @@ class Fetcher():
             output_dir (str): Directory to save CSV files.
             use_sub_dir (bool): Whether to use a dated subdirectory.
         """
-        super().__init__()  # Initialize BaseModel
         if isinstance(symbols, str):
             symbols = [s.strip() for s in symbols.split(',') if s.strip()]
         elif not isinstance(symbols, list):
@@ -75,6 +71,7 @@ class Fetcher():
         symbols = symbols or self.symbols
         start_date = start_date or self.start_date
         end_date = end_date or self.end_date
+        source = source or self.source
 
         if isinstance(symbols, str):
             symbols = [s.strip() for s in symbols.split(',') if s.strip()]
