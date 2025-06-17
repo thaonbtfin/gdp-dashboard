@@ -1,19 +1,20 @@
 import io
+import os
 import requests
 import streamlit as st
 import pandas as pd
-from src.constants import API_URL, DATA_HISTORY, GIST_URL_DH_HISTORY, GIST_URL_SAMPLE_HISTORY, GIST_URL_TH_HISTORY
+from src.constants import API_URL, DATA_HISTORY, GIST_URL_DH_HISTORY, GIST_URL_SAMPLE_HISTORY, GIST_URL_TH_HISTORY, DATA_DIR
+from src.tastock.data_manager import DataManager
 
 class Streamlit_def:
 
     @staticmethod
     def load_data():
-        source = st.sidebar.radio("Chọn nguồn dữ liệu:", ["CSV","CSV URL", "Upload CSV", "API"], index=0)
+        source = st.sidebar.radio("Chọn nguồn dữ liệu:", ["CSV","CSV URL", "Upload CSV", "API", "Cached Data"], index=0)
 
         if source == "CSV":
             # DATA_FILENAME = Path(__file__).parent/'data/history_data.csv'
             DATA_FILENAME = DATA_HISTORY
-            raw_df = pd.read_csv(DATA_FILENAME)
             try:
                 df = pd.read_csv(DATA_FILENAME)
             except Exception as e:
@@ -62,17 +63,43 @@ class Streamlit_def:
             except Exception as e:
                 st.error(f"Không thể tải dữ liệu từ API: {e}")
                 return pd.DataFrame()
+                
+        elif source == "Cached Data":
+            # Use DataManager to load the latest cached data
+            data_type = st.sidebar.selectbox(
+                "Chọn loại dữ liệu:",
+                ["history", "perf", "intrinsic", "fin"],
+                format_func=lambda x: {
+                    "history": "Dữ liệu lịch sử",
+                    "perf": "Chỉ số hiệu suất",
+                    "intrinsic": "Giá trị nội tại",
+                    "fin": "Dữ liệu tài chính"
+                }.get(x, x)
+            )
+            
+            try:
+                data_manager = DataManager(base_output_dir=DATA_DIR)
+                df = data_manager.load_latest_data(data_type)
+                if df.empty:
+                    st.warning(f"Không tìm thấy dữ liệu {data_type} đã lưu.")
+                    return pd.DataFrame()
+            except Exception as e:
+                st.error(f"Lỗi khi tải dữ liệu đã lưu: {e}")
+                return pd.DataFrame()
 
-        df['time'] = pd.to_datetime(df['time'], format='%Y%m%d')
-        df.sort_values('time', inplace=True)
         # Perform time conversion and sorting only if df is not empty and 'time' column exists
         if not df.empty:
             if 'time' in df.columns:
                 try:
-                    df['time'] = pd.to_datetime(df['time'], format='%Y%m%d')
+                    # Try to convert 'time' to datetime, handling different formats
+                    try:
+                        df['time'] = pd.to_datetime(df['time'], format='%Y%m%d')
+                    except:
+                        df['time'] = pd.to_datetime(df['time'])
+                    
                     df.sort_values('time', inplace=True)
                 except Exception as e:
-                    st.error(f"Lỗi khi xử lý cột 'time': {e}. Đảm bảo cột 'time' có định dạng YYYYMMDD và dữ liệu hợp lệ.")
+                    st.error(f"Lỗi khi xử lý cột 'time': {e}. Đảm bảo cột 'time' có định dạng hợp lệ.")
                     return pd.DataFrame() # Return empty on error
             else:
                 # If 'time' column is crucial for all downstream processes,
@@ -80,9 +107,6 @@ class Streamlit_def:
                 # For now, a warning allows detail_tab to still attempt display.
                 st.warning("Cột 'time' không được tìm thấy trong dữ liệu tải lên. Một số tính năng có thể không hoạt động đúng.")
         
-        # The commented-out melt operation here suggests it was considered.
-        # If melting is needed for the raw 'df' before it's returned, it should be robust.
-        # However, the current app structure melts 'df' later in TAstock_def.get_stock_data.
         return df
 
 

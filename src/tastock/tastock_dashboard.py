@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 import math
+import os
 
 from .stock import Stock
 from .helpers import Helpers
 from .calculator import Calculator
-from ..constants import DEFAULT_PERIOD
+from .data_manager import DataManager
+from ..constants import DEFAULT_PERIOD, DATA_DIR
 
 
 class TAstock_def:
