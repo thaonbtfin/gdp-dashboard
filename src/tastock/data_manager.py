@@ -10,6 +10,7 @@ import os
 import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
+from functools import lru_cache
 
 from .fetcher import Fetcher
 from .calculator import Calculator
@@ -575,6 +576,8 @@ class DataManager:
         Returns:
             pd.DataFrame: Loaded DataFrame or empty DataFrame if file not found
         """
+        from .cache_utils import read_csv_cached, get_latest_file_path
+        
         file_map = {
             'history': "history_data_all_symbols.csv",
             'perf': "perf_all_symbols.csv",
@@ -587,8 +590,14 @@ class DataManager:
         
         file_path = os.path.join(self.base_output_dir, file_map[data_type])
         
+        # Try to get the file path from cache
+        cached_path = get_latest_file_path(data_type)
+        if cached_path and os.path.exists(cached_path):
+            file_path = cached_path
+        
         if os.path.exists(file_path):
-            return pd.read_csv(file_path)
+            # Use cached reading if available
+            return read_csv_cached(file_path)
         else:
             print(f"Warning: File not found: {file_path}")
             return pd.DataFrame()

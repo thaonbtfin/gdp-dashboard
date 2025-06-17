@@ -10,10 +10,20 @@ class Streamlit_def:
 
     @staticmethod
     def load_data():
-        source = st.sidebar.radio("Chọn nguồn dữ liệu:", ["CSV","CSV URL", "Upload CSV", "API", "Cached Data"], index=0)
+        source = st.sidebar.radio("Chọn nguồn dữ liệu:", ["CSV","CSV URL", "Upload CSV", "API"], index=0)
 
         if source == "CSV":
-            # DATA_FILENAME = Path(__file__).parent/'data/history_data.csv'
+            # Try to load from the new data structure first
+            try:
+                data_manager = DataManager(base_output_dir=DATA_DIR)
+                df = data_manager.load_latest_data('history')
+                if not df.empty:
+                    return df
+            except Exception as e:
+                # If loading from data manager fails, fall back to the original file
+                pass
+                
+            # Fall back to original file if data manager loading fails
             DATA_FILENAME = DATA_HISTORY
             try:
                 df = pd.read_csv(DATA_FILENAME)
@@ -62,29 +72,6 @@ class Streamlit_def:
                 df = pd.DataFrame(json_data)
             except Exception as e:
                 st.error(f"Không thể tải dữ liệu từ API: {e}")
-                return pd.DataFrame()
-                
-        elif source == "Cached Data":
-            # Use DataManager to load the latest cached data
-            data_type = st.sidebar.selectbox(
-                "Chọn loại dữ liệu:",
-                ["history", "perf", "intrinsic", "fin"],
-                format_func=lambda x: {
-                    "history": "Dữ liệu lịch sử",
-                    "perf": "Chỉ số hiệu suất",
-                    "intrinsic": "Giá trị nội tại",
-                    "fin": "Dữ liệu tài chính"
-                }.get(x, x)
-            )
-            
-            try:
-                data_manager = DataManager(base_output_dir=DATA_DIR)
-                df = data_manager.load_latest_data(data_type)
-                if df.empty:
-                    st.warning(f"Không tìm thấy dữ liệu {data_type} đã lưu.")
-                    return pd.DataFrame()
-            except Exception as e:
-                st.error(f"Lỗi khi tải dữ liệu đã lưu: {e}")
                 return pd.DataFrame()
 
         # Perform time conversion and sorting only if df is not empty and 'time' column exists
