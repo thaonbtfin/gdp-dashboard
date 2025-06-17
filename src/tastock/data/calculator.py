@@ -1,3 +1,9 @@
+"""
+Calculator Module
+
+This module provides the Calculator class for financial calculations on stock data.
+"""
+
 import numpy as np
 import pandas as pd
 
@@ -39,46 +45,24 @@ class Calculator:
             'overall_annual_standard_deviation': float(round(overall_annual_standard_deviation, 2))
         }
         return pd.DataFrame([data])
-
-    # @staticmethod
-    # def add_profit_rate_columns_to_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    #     """
-    #     Add daily and cumulative profit rate columns to a DataFrame with a 'close' column.
-    #     Returns a new DataFrame with the added columns, or the original if 'close' column is missing.
-    #     """
-    #     df_copy = df.copy() # Work on a copy to avoid modifying the original DataFrame
-
-    #     if 'close' in df_copy.columns:  # Check if 'close' column exists
-    #         df_copy['daily profit rate'] = df_copy['close'].pct_change() * 100
-    #         df_copy['daily profit rate'] = df_copy['daily profit rate'].fillna(0).round(2)
-    #         df_copy['cumulative profit rate'] = (1 + df_copy['daily profit rate'] / 100).cumprod() - 1
-    #         df_copy['cumulative profit rate'] = df_copy['cumulative profit rate'].fillna(0).round(2)
-    #         print("Added profit rate columns to dataframe.")
-    #     else:    
-    #         print(f"DataFrame must contain 'close' column.")
-    #     return df_copy
     
-    # @staticmethod
-    # def add_profit_rate_columns_to_csv_file(csv_filepath: str):
-    #     """
-    #     Read a CSV, calculate profit rates, and update the CSV with new columns.
-    #     Only works for CSVs with a 'close' column.
-    #     """
-    #     try:
-    #         df = pd.read_csv(csv_filepath)
-    #         # add_profit_rate_columns_to_dataframe returns a modified DataFrame
-    #         df_modified = Calculator.add_profit_rate_columns_to_dataframe(df)
+    @staticmethod
+    def add_profit_rate_columns_to_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add daily and cumulative profit rate columns to a DataFrame with a 'close' column.
+        Returns a new DataFrame with the added columns, or the original if 'close' column is missing.
+        """
+        df_copy = df.copy() # Work on a copy to avoid modifying the original DataFrame
 
-    #         # Check if 'daily profit rate' was actually added, implying success
-    #         if 'daily profit rate' in df_modified.columns:
-    #             df_modified.to_csv(csv_filepath, index=False)
-    #             print(f"Successfully updated {csv_filepath} with profit rate columns.")
-    #         # If not, the add_profit_rate_columns_to_dataframe method would have printed an error
-    #         # (e.g., 'close' column missing), so no need to save.
-    #     except FileNotFoundError:
-    #         print(f"Error: File not found at {csv_filepath}")
-    #     except Exception as e:
-    #         print(f"An error occurred while processing {csv_filepath}: {e}")
+        if 'close' in df_copy.columns:  # Check if 'close' column exists
+            df_copy['daily profit rate'] = df_copy['close'].pct_change() * 100
+            df_copy['daily profit rate'] = df_copy['daily profit rate'].fillna(0).round(2)
+            df_copy['cumulative profit rate'] = (1 + df_copy['daily profit rate'] / 100).cumprod() - 1
+            df_copy['cumulative profit rate'] = df_copy['cumulative profit rate'].fillna(0).round(2)
+            print("Added profit rate columns to dataframe.")
+        else:    
+            print(f"DataFrame must contain 'close' column.")
+        return df_copy
     
     @staticmethod
     def add_profit_rate_columns_to_dataframes(dataframes_dict: dict) -> pd.DataFrame:
@@ -154,11 +138,6 @@ class Calculator:
         else:
             print(f"Error: Invalid moving average type '{ma_type}'. Choose 'SMA' or 'EMA'.")
             return pd.Series(dtype=float)
-
-    # You can add more static methods for other calculations:
-    # - Relative Strength Index (RSI)
-    # - Moving Average Convergence Divergence (MACD)
-    # - Bollinger Bands
 
     @staticmethod
     def calculate_series_performance_metrics(

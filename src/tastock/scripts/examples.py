@@ -2,15 +2,12 @@
 Example script demonstrating how to use the DataManager class.
 """
 
-import sys
 import os
-sys.path.insert(0, os.getcwd())
-
 import pandas as pd
 from datetime import datetime, timedelta
 
 from src.constants import PORTFOLIOS, SYMBOLS_VN30, DATA_DIR
-from src.tastock.data_manager import DataManager
+from src.tastock.data.manager import DataManager
 
 def get_date_range(days_back=30):
     """Get a date range from days_back days ago to yesterday."""

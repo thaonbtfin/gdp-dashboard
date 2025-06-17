@@ -5,14 +5,14 @@ This script fetches and updates stock data for all configured portfolios and sym
 It can be run manually or scheduled using cron or a similar scheduler.
 
 Usage:
-    python -m src.tastock.scheduled_data_update [--days_back DAYS] [--portfolios PORTFOLIOS]
+    python -m src.tastock.scripts.data_update [--days_back DAYS] [--portfolios PORTFOLIOS]
 
 Example:
     # Update data for the last 30 days for all portfolios
-    python -m src.tastock.scheduled_data_update --days_back 30
+    python -m src.tastock.scripts.data_update --days_back 30
     
     # Update data for the last 90 days for VN30 and VN100 portfolios
-    python -m src.tastock.scheduled_data_update --days_back 90 --portfolios VN30,VN100
+    python -m src.tastock.scripts.data_update --days_back 90 --portfolios VN30,VN100
 """
 
 import os
@@ -21,7 +21,7 @@ import logging
 from datetime import datetime, timedelta
 
 from src.constants import PORTFOLIOS, DATA_DIR
-from src.tastock.data_manager import DataManager
+from src.tastock.data.manager import DataManager
 
 # Configure logging
 logging.basicConfig(

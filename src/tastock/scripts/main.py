@@ -1,22 +1,28 @@
-import sys
-import os
-sys.path.insert(0, os.getcwd())
+"""
+Main script for the tastock application.
 
+This script provides the Assistant class with methods for fetching data,
+calculating performance metrics, and saving results to CSV files.
+"""
+
+import os
 import pandas as pd
 import numpy as np
 
-from src.tastock.fetcher import Fetcher
-from src.tastock.stock import Stock
-from src.tastock.portfolio import Portfolio
-from src.tastock.helpers import Helpers
+from src.tastock.data.fetcher import Fetcher
+from src.tastock.core.stock import Stock
+from src.tastock.core.portfolio import Portfolio
+from src.tastock.utils.helpers import Helpers
 from src.constants import *
-from src.tastock.calculator import Calculator
+from src.tastock.data.calculator import Calculator
 
 output_dir = 'data'
 
 class Assistant:
-
-    # This method was removed as it's outdated
+    """
+    Assistant class provides methods for fetching data, calculating metrics,
+    and saving results to CSV files.
+    """
 
     @staticmethod
     def fetch_portfolios_data_and_save_to_csv(
@@ -123,11 +129,9 @@ class Assistant:
         for portfolio_name, symbols_list_for_portfolio in portfolios_map.items():
             if not isinstance(symbols_list_for_portfolio, list) or not symbols_list_for_portfolio:
                 print(f"Skipping portfolio '{portfolio_name}': symbol list is empty or not a list.")
-                # all_portfolios_fetched_data[portfolio_name] = {} # Store empty dict for skipped/empty
                 all_portfolios_returned_data[portfolio_name] = {}
                 continue
 
-            # print(f"\nProcessing portfolio: '{portfolio_name}' with symbols: {symbols_list}")
             print(f"\nProcessing and saving for portfolio executing from '{portfolio_name}' with symbols: {symbols_list_for_portfolio}")
 
             # Filter data for the current portfolio from the master fetched data
@@ -192,7 +196,13 @@ class Assistant:
 
     @staticmethod
     def fetch_portfolios_data_and_calculate_performance_to_save_to_csv(period=10, portfolios=PORTFOLIOS):
-
+        """
+        Fetch data for portfolios, calculate performance metrics, and save to CSV files.
+        
+        Args:
+            period (int): Number of business days for history
+            portfolios (dict): Dictionary of portfolio names and symbols
+        """
         print(f'\n--- Running batch portfolio fetch from {Assistant.fetch_portfolios_data_and_calculate_performance_to_save_to_csv.__name__} ---')
         
         all_portfolios_data = Assistant.fetch_portfolios_data_and_save_to_csv(

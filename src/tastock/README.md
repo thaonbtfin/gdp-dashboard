@@ -2,16 +2,15 @@
 
 This document explains the data management system for the Tastock application, which optimizes data fetching, calculation, and storage for both portfolios and symbols.
 
-## Overview
+## Architecture Overview
 
-The data management system provides the following features:
+The data management system follows an object-oriented design with clear separation of concerns:
 
-1. **Unified Data Fetching**: Fetch history and financial data for stocks, avoiding duplicate fetches for the same symbol
-2. **Optimized Data Storage**: Save data in a logical folder structure to avoid redundant reads
-3. **Performance Metrics Calculation**: Calculate and store performance metrics for all symbols and portfolios
-4. **Intrinsic Value Calculation**: Calculate and store intrinsic values for all symbols
-5. **Scheduled Updates**: Run scheduled updates to keep data current
-6. **In-Memory Caching**: Cache data in memory to improve performance
+1. **DataManager**: Coordinates between fetching, calculating, and storing data
+2. **DataFetcher**: Handles fetching stock data and caching it to avoid duplicate requests
+3. **DataCalculator**: Handles calculating metrics from stock data
+4. **DataStorage**: Handles storing and loading stock data
+5. **Cache Utilities**: Provides in-memory caching for improved performance
 
 ## Directory Structure
 
@@ -41,7 +40,7 @@ data/
     └── ...
 ```
 
-## Using the Data Manager
+## Using the Data Management System
 
 ### Basic Usage
 
@@ -78,6 +77,30 @@ all_symbols_result = data_manager.process_all_symbols(
 latest_history = data_manager.load_latest_data('history')
 latest_perf = data_manager.load_latest_data('perf')
 latest_intrinsic = data_manager.load_latest_data('intrinsic')
+```
+
+### Advanced Usage
+
+For more advanced usage, you can directly use the specialized classes:
+
+```python
+from src.tastock.data_fetcher import DataFetcher
+from src.tastock.data_calculator import DataCalculator
+from src.tastock.data_storage import DataStorage
+
+# Initialize components
+fetcher = DataFetcher(source="VCI")
+calculator = DataCalculator()
+storage = DataStorage(base_output_dir="data")
+
+# Fetch data
+stock_data = fetcher.fetch_stock_data(["ACB", "FPT"], "2024-01-01", "2024-06-30")
+
+# Calculate metrics
+metrics = calculator.calculate_performance_metrics("ACB", stock_data["ACB"])
+
+# Save data
+storage.save_performance_metrics({"ACB": metrics})
 ```
 
 ### Running Scheduled Updates
@@ -122,3 +145,4 @@ The data management system is integrated with the Streamlit application:
 4. **Automatic Updates**: Can be scheduled to run regularly
 5. **Consistent Calculations**: Uses the same calculation methods for all metrics
 6. **Improved Performance**: Uses in-memory caching to reduce disk I/O
+7. **Better Code Organization**: Follows OOP design patterns with clear separation of concerns

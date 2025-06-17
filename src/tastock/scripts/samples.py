@@ -1,21 +1,20 @@
-import sys
-import os
-# print(os.getcwd())
-sys.path.insert(0, os.getcwd())
+"""
+Sample script demonstrating how to use the tastock module.
+"""
 
 import pandas as pd
 
-from src.tastock.fetcher import Fetcher
-from src.tastock.stock import Stock
-from src.tastock.portfolio import Portfolio
-from src.tastock.helpers import Helpers
+from src.tastock.data.fetcher import Fetcher
+from src.tastock.core.stock import Stock
+from src.tastock.core.portfolio import Portfolio
+from src.tastock.utils.helpers import Helpers
 from src.constants import DEFAULT_SOURCE, SYMBOLS_DH, SYMBOLS_TH, DEFAULT_OUTPUT_DIR, SYMBOLS_VN30, TEMP_DIR
-from src.tastock.calculator import Calculator
+from src.tastock.data.calculator import Calculator
 
 OUTPUT_DIR = DEFAULT_OUTPUT_DIR + 'fetchedData/sample'
 
 def sample_fetch_periods_and_save_to_csv_file():
-
+    """Sample function to fetch data for a period and save to CSV."""
     print(sample_fetch_periods_and_save_to_csv_file.__name__)
 
     source = DEFAULT_SOURCE
@@ -31,26 +30,25 @@ def sample_fetch_periods_and_save_to_csv_file():
     fetched_df_period = fetcher.fetch_history_to_dataframe_for_periods(
         period=1251,
     )
-    # print(f'{fetched_df_period}')  # Uncomment to inspect fetched data
     
     # Save the fetched DataFrame to a CSV file
     Helpers.save_multiple_dataframes_to_single_csv(
             dataframes=fetched_df_period,
             filename_prefix=f"history_period_",
-            output_dir=OUTPUT_DIR + '/history_period', # Uses the OUTPUT_DIR defined in sample.py
-            use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+            output_dir=OUTPUT_DIR + '/history_period',
+            use_sub_dir=True
         )    
 
     # Save each symbol's DataFrame into separate CSV files in a folder
     Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
         dataframes=fetched_df_period,
         filename_suffix=f"_history_period_",
-        output_dir=OUTPUT_DIR + '/history_period', # Uses the OUTPUT_DIR defined in sample.py
-        use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+        output_dir=OUTPUT_DIR + '/history_period',
+        use_sub_dir=True
     )
 
 def sample_fetch_from_start_end_date_and_save_to_csv_file():
-
+    """Sample function to fetch data for a date range and save to CSV."""
     print(sample_fetch_from_start_end_date_and_save_to_csv_file.__name__)
 
     symbols = ['ACB', 'FPT']
@@ -71,37 +69,33 @@ def sample_fetch_from_start_end_date_and_save_to_csv_file():
         start_date=start_date,
         end_date=end_date
     )
-    # Print the fetched DataFrame (uncomment to inspect)
-    # print(f'{fetched_df}')  # Uncomment to inspect fetched data
     
     # Save the fetched DataFrame to a CSV file
     Helpers.save_multiple_dataframes_to_single_csv(
             dataframes=fetched_df,
             filename_prefix=f"history_",
-            output_dir=OUTPUT_DIR + '/history_start_end_date', # Uses the OUTPUT_DIR defined in sample.py
-            use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+            output_dir=OUTPUT_DIR + '/history_start_end_date',
+            use_sub_dir=True
         )    
 
     # Save each symbol's DataFrame into separate CSV files in a folder
     Helpers.save_multiple_dataframes_to_multiple_csv_files_in_directory(
         dataframes=fetched_df,
         filename_suffix=f"_history_",
-        output_dir=OUTPUT_DIR + '/history_start_end_date', # Uses the OUTPUT_DIR defined in sample.py
-        use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+        output_dir=OUTPUT_DIR + '/history_start_end_date',
+        use_sub_dir=True
     )
 
 def sample_calculator_moving_average():
-    # In your main.py or another script where you process data:
-
-    # --- Fetch data (example) ---
+    """Sample function to calculate moving averages."""
+    # Fetch data
     fetcher = Fetcher(symbols='ACB', start_date='2023-12-01', end_date='2023-12-31')
     dataframes = fetcher.fetch_history_to_dataframe_from_start_end_date()
 
     acb_df = dataframes.get('ACB')
 
     if acb_df is not None and not acb_df.empty:
-        # --- Calculate SMA ---
-        # sma_20_series = Calculator.calculate_simple_moving_average(acb_df, window=20)
+        # Calculate SMA
         sma_20_series = Calculator.calculate_moving_average(acb_df, window=20, price_column='close', ma_type='SMA')
         
         # Add it as a new column to the DataFrame
@@ -110,28 +104,18 @@ def sample_calculator_moving_average():
             print("ACB DataFrame with SMA_20:")
             print(acb_df.tail())
 
-        # --- Calculate EMA ---
+        # Calculate EMA
         ema_10_series = Calculator.calculate_moving_average(acb_df, window=10, price_column='close', ma_type='EMA')
         if not ema_10_series.empty:
             acb_df['EMA_10'] = ema_10_series
             print("\nACB DataFrame with EMA_10:")
             print(acb_df.tail())
-
-        # --- Perform other calculations ---
-        # Example: Add profit rate columns (if you haven't already)
-        # updated_dataframes = Calculator.add_profit_rate_columns_to_dataframe({'ACB': acb_df.copy()})
-        # acb_df_with_profit = updated_dataframes['ACB']
-        # print("\nACB DataFrame with Profit Rate:")
-        # print(acb_df_with_profit.tail())
     else:
         print("ACB data is None or empty. Skipping save operation.")
-        return # Exit the function if acb_df is not valid
-
-    # This line saves acb_df, which now includes 'SMA_20' and 'EMA_10' if they were added.
-    # save_dataframes_to_csv_file(acb_df)
+        return
 
 def sample_calculate_stock_performance_metrics_to_stock_object():
-
+    """Sample function to calculate stock performance metrics."""
     print(f"\nRunning: {sample_calculate_stock_performance_metrics_to_stock_object.__name__}")
     symbols = ['ACB','FPT'] 
     # Use a longer period for more meaningful calculations
@@ -147,20 +131,21 @@ def sample_calculate_stock_performance_metrics_to_stock_object():
     )
 
     if metrics_df is not None and not metrics_df.empty:
-        # Display the DataFrame (optional)
+        # Display the DataFrame
         print("\nConsolidated Stock Performance Metrics:")
         print(metrics_df)
 
-        # Save all metrics to a single CSV file using the new helper
+        # Save all metrics to a single CSV file
         csv_filepath = Helpers.save_single_dataframe_to_csv(
             df=metrics_df,
             filename_prefix="all_symbols_performance_metrics",
-            output_dir=OUTPUT_DIR + '/stock_performance_metrics', # Uses the OUTPUT_DIR defined in sample.py
-            use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+            output_dir=OUTPUT_DIR + '/stock_performance_metrics',
+            use_sub_dir=True
         )
         print(f"\nAll stock performance metrics saved to: {csv_filepath}")
 
 def sample_calculate_portfolio_performance_metrics():
+    """Sample function to calculate portfolio performance metrics."""
     print(f"\nRunning: {sample_calculate_portfolio_performance_metrics.__name__}")
 
     portfolio_symbols = SYMBOLS_TH # Example portfolio
@@ -168,44 +153,35 @@ def sample_calculate_portfolio_performance_metrics():
     source = DEFAULT_SOURCE
     portfolio_name = "MyTechAndBankPortfolio"
 
-    # Call the new static method from the Portfolio class
+    # Call the static method from the Portfolio class
     metrics_df = Portfolio.get_portfolio_metrics_df(
         symbols=portfolio_symbols,
         start_date=start_date,
         end_date=end_date,
         source=source,
-        weights=None, # Or specify weights: [0.4, 0.3, 0.3] for SYMBOLS_TH if it has 3 symbols
+        weights=None,
         name=portfolio_name
     )
 
     if metrics_df is not None and not metrics_df.empty:
         print(f"\nPortfolio Performance Metrics for {portfolio_name}:")
-        # Display the DataFrame (optional, as it's a single row)
-        # For a single row DataFrame, printing the Series might be cleaner:
         if not metrics_df.empty:
             print(metrics_df.iloc[0])
 
-        # Save portfolio metrics to a CSV file using the helper
+        # Save portfolio metrics to a CSV file
         csv_filepath = Helpers.save_single_dataframe_to_csv(
             df=metrics_df,
-            # filename_prefix="all_symbols_performance_metrics",
             filename_prefix=f"portfolio_{portfolio_name}_performance_metrics",
-            output_dir=OUTPUT_DIR + '/portfolio_performance_metrics', # Uses the OUTPUT_DIR defined in sample.py
-            use_sub_dir=True # Saves directly into OUTPUT_DIR without creating a 'data_timestamp' subdir
+            output_dir=OUTPUT_DIR + '/portfolio_performance_metrics',
+            use_sub_dir=True
         )
         print(f"\nPortfolio performance metrics for {portfolio_name} saved to: {csv_filepath}")
     else:
         print(f"Could not calculate performance metrics for portfolio {portfolio_name}.")
 
-def main():
-    """
-    Example usage of Fetcher.
-    """
-
 if __name__ == "__main__":
-    # main()
     sample_fetch_periods_and_save_to_csv_file()
     sample_fetch_from_start_end_date_and_save_to_csv_file()
-    # sample_calculator_moving_average()                                # not use for now
-    # sample_calculate_stock_performance_metrics_to_stock_object()      # use this
-    # sample_calculate_portfolio_performance_metrics()                  # use this
+    # sample_calculator_moving_average()
+    # sample_calculate_stock_performance_metrics_to_stock_object()
+    # sample_calculate_portfolio_performance_metrics()
