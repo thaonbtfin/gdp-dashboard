@@ -198,7 +198,15 @@ class TAstock_st:
 
     @staticmethod
     def history_tab(stock_df):
-
+        # Check if we have cached moving averages data
+        has_cached_ma = False
+        try:
+            # This could be extended to load moving averages from cached files
+            # if they are pre-calculated and stored
+            pass
+        except Exception:
+            pass
+            
         from_date, to_date = TAstock_def._display_date_slider(stock_df)
         TAstock_def._display_stock_chart(stock_df, from_date, to_date)
 
@@ -293,7 +301,62 @@ class TAstock_st:
 
         TAstock_def._display_history_table(raw_df)
         
-        # Display performance metrics table after history table
+        # Try to load performance metrics from data files first
+        try:
+            data_manager = DataManager(base_output_dir=DATA_DIR)
+            perf_df = data_manager.load_latest_data('perf')
+            
+            if not perf_df.empty and 'symbol' in perf_df.columns:
+                st.header("Chỉ số Hiệu suất (Từ dữ liệu đã lưu)", divider="gray")
+                
+                # Format the performance metrics for display
+                metric_labels = {
+                    'geom_mean_daily_return_pct': 'Lợi nhuận trung bình hàng ngày',
+                    'annualized_return_pct': 'Lợi nhuận hàng năm',
+                    'daily_std_dev_pct': 'Độ lệch chuẩn hàng ngày',
+                    'annual_std_dev_pct': 'Độ lệch chuẩn hàng năm'
+                }
+                
+                # Use all metrics defined in metric_labels that exist in the DataFrame
+                all_metrics = [m for m in metric_labels.keys() if m in perf_df.columns]
+                
+                if all_metrics and perf_df.shape[0] > 0:
+                    # Create a new DataFrame with metrics as rows and symbols as columns
+                    formatted_df = pd.DataFrame(index=all_metrics)
+                    
+                    # Set the index names to display labels
+                    formatted_df.index = [metric_labels.get(m, m) for m in formatted_df.index]
+                    
+                    # Add data for each symbol
+                    for _, row in perf_df.iterrows():
+                        symbol = row['symbol']
+                        for metric in all_metrics:
+                            value = row.get(metric)
+                            if pd.notna(value) and isinstance(value, (int, float)):
+                                formatted_df.loc[metric_labels.get(metric, metric), symbol] = f"{value:.2%}"
+                            else:
+                                formatted_df.loc[metric_labels.get(metric, metric), symbol] = "N/A"
+                    
+                    st.dataframe(formatted_df)
+                    
+                    # Try to load intrinsic values
+                    try:
+                        iv_df = data_manager.load_latest_data('intrinsic')
+                        if not iv_df.empty and 'symbol' in iv_df.columns and 'intrinsic_value' in iv_df.columns:
+                            st.header("Giá trị Nội tại (Từ dữ liệu đã lưu)", divider="gray")
+                            st.dataframe(iv_df)
+                    except Exception as e:
+                        # If loading intrinsic values fails, just continue
+                        pass
+                    
+                    # Skip calculating metrics from raw data since we already displayed them
+                    return
+            
+        except Exception as e:
+            # If loading from data manager fails, fall back to calculating from raw data
+            pass
+        
+        # Fall back to calculating performance metrics from raw data
         TAstock_st._display_performance_metrics_table(raw_df)
 
     

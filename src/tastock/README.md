@@ -11,6 +11,7 @@ The data management system provides the following features:
 3. **Performance Metrics Calculation**: Calculate and store performance metrics for all symbols and portfolios
 4. **Intrinsic Value Calculation**: Calculate and store intrinsic values for all symbols
 5. **Scheduled Updates**: Run scheduled updates to keep data current
+6. **In-Memory Caching**: Cache data in memory to improve performance
 
 ## Directory Structure
 
@@ -101,12 +102,17 @@ Example cron entry to run daily at 6:00 AM:
 
 ## Integration with Streamlit
 
-The data management system is integrated with the Streamlit application. When you select "Cached Data" as the data source in the sidebar, you can choose which type of data to load:
+The data management system is integrated with the Streamlit application:
 
-- **Dữ liệu lịch sử** (History Data): Stock price history for all symbols
-- **Chỉ số hiệu suất** (Performance Metrics): Performance metrics for all symbols
-- **Giá trị nội tại** (Intrinsic Values): Calculated intrinsic values for all symbols
-- **Dữ liệu tài chính** (Financial Data): Financial ratios and data for all symbols
+1. When you select "CSV" as the data source, the application will:
+   - First try to load data from the new data structure
+   - Fall back to the original file if loading from the new structure fails
+
+2. The detail tab will:
+   - Try to load performance metrics and intrinsic values from the data files
+   - Calculate metrics from raw data if loading from files fails
+
+3. In-memory caching is used to improve performance when loading data files
 
 ## Benefits
 
@@ -115,3 +121,4 @@ The data management system is integrated with the Streamlit application. When yo
 3. **Organized Storage**: Stores data in a logical folder structure for easy access
 4. **Automatic Updates**: Can be scheduled to run regularly
 5. **Consistent Calculations**: Uses the same calculation methods for all metrics
+6. **Improved Performance**: Uses in-memory caching to reduce disk I/O
