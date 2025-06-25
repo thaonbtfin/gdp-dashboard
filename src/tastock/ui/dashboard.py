@@ -11,8 +11,8 @@ import os
 
 from ..core.stock import Stock
 from ..utils.helpers import Helpers
-from ..data.calculator import Calculator
-from ..data.manager import DataManager
+from ..data.data_calculator import DataCalculator
+from ..data.data_manager import DataManager
 from src.constants import DEFAULT_PERIOD, DATA_DIR
 
 
@@ -256,7 +256,7 @@ class TAstock_st:
                 if len(single_stock_df) > 1:
                     try:
                         # Calculate performance metrics
-                        perf_metrics = Calculator.calculate_series_performance_metrics(single_stock_df, price_column='close')
+                        perf_metrics = DataCalculator.calculate_series_performance_metrics(single_stock_df, price_column='close')
                         symbol_perf_metrics.update(perf_metrics)
                     except Exception as e:
                         st.error(f"Error calculating performance for {symbol}: {e}")

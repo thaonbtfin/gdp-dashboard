@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 from vnstock import Vnstock
 from src.constants import DEFAULT_SOURCE, DEFAULT_OUTPUT_DIR
-from ..data.fetcher import Fetcher
-from ..data.calculator import Calculator
+from ..data.data_fetcher import DataFetcher
+from ..data.data_calculator import DataCalculator
 
 class Stock:
     """
@@ -36,14 +36,8 @@ class Stock:
         """
         Fetches historical data for the stock.
         """
-        fetcher = Fetcher(
-            symbols=[self.symbol],
-            start_date=self.start_date,
-            end_date=self.end_date,
-            source=self.source,
-            output_dir=DEFAULT_OUTPUT_DIR
-        )
-        fetched_data_dict = fetcher.fetch_history_to_dataframe_from_start_end_date(
+        fetcher = DataFetcher(source=self.source)
+        fetched_data_dict = fetcher.fetch_stock_data(
             symbols=[self.symbol],
             start_date=self.start_date,
             end_date=self.end_date
@@ -52,7 +46,8 @@ class Stock:
 
     def _calculate_metrics(self):
         if self.data is not None and not self.data.empty:
-            self.performance_metrics = Calculator.calculate_series_performance_metrics(self.data, price_column='close')
+            calculator = DataCalculator()
+            self.performance_metrics = calculator._calculate_series_performance_metrics(self.data, price_column='close')
         else:
             print(f"Warning: Data for {self.symbol} is None or empty after fetching. Metrics will be None.")
             self.performance_metrics = {metric: None for metric in ['geom_mean_daily_return_pct', 'annualized_return_pct', 'daily_std_dev_pct', 'annual_std_dev_pct']}

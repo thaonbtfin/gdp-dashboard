@@ -9,8 +9,7 @@ import pandas as pd
 from typing import Dict, List, Optional
 from datetime import datetime
 
-from .fetcher import Fetcher
-from ..core.stock import Stock
+from vnstock import Vnstock
 from src.constants import DEFAULT_SOURCE
 
 class DataFetcher:
@@ -26,7 +25,6 @@ class DataFetcher:
             source (str): Data source for stock information
         """
         self.source = source
-        self.fetcher = Fetcher(source=source)
         
         # Cache to store fetched data
         self._stock_data_cache = {}  # {symbol_start_date_end_date: dataframe}
@@ -64,17 +62,17 @@ class DataFetcher:
         
         # Fetch only what's not in cache
         if symbols_to_fetch:
-            fetched_data = self.fetcher.fetch_history_to_dataframe_from_start_end_date(
-                symbols=symbols_to_fetch,
-                start_date=start_date,
-                end_date=end_date
-            )
-            
-            # Update cache and result
-            for symbol, data in fetched_data.items():
-                cache_key = f"{symbol}_{start_date}_{end_date}"
-                self._stock_data_cache[cache_key] = data
-                result[symbol] = data
+            for symbol in symbols_to_fetch:
+                try:
+                    stock_obj = Vnstock().stock(symbol=symbol, source=self.source)
+                    data = stock_obj.quote.history(start=start_date, end=end_date)
+                    
+                    cache_key = f"{symbol}_{start_date}_{end_date}"
+                    self._stock_data_cache[cache_key] = data
+                    result[symbol] = data
+                except Exception as e:
+                    print(f"Error fetching data for {symbol}: {e}")
+                    result[symbol] = pd.DataFrame()
         
         return result
     
@@ -92,18 +90,13 @@ class DataFetcher:
         if not force_refresh and symbol in self._financial_data_cache:
             return self._financial_data_cache[symbol]
         
-        # Create a temporary Stock object to fetch financial data
+        # Fetch financial data directly using vnstock
         try:
-            stock = Stock(
-                symbol=symbol,
-                start_date=datetime.now().strftime('%Y-%m-%d'),  # Just need today for financial data
-                end_date=datetime.now().strftime('%Y-%m-%d'),
-                source=self.source
-            )
+            financial_data = Vnstock().stock(symbol=symbol, source=self.source).finance.ratio(period='year', lang='vi', dropna=True)
             
-            if stock.financial_ratios_df is not None:
-                self._financial_data_cache[symbol] = stock.financial_ratios_df
-                return stock.financial_ratios_df
+            if not financial_data.empty:
+                self._financial_data_cache[symbol] = financial_data
+                return financial_data
             
             return None
         except Exception as e:

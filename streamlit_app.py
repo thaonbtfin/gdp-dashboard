@@ -3,7 +3,7 @@ import pandas as pd
 import math
 from pathlib import Path
 
-from src.tastock.tastock_dashboard import TAstock_def, TAstock_st
+from src.tastock.ui.dashboard import TAstock_def, TAstock_st
 from src.streamlit.streamlit_dashboard import Streamlit_def
 
 # Set the title and favicon that appear in the Browser's tab bar.
