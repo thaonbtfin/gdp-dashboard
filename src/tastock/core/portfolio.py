@@ -6,8 +6,8 @@ This module provides the Portfolio class for representing a portfolio of stocks.
 
 import pandas as pd
 from src.constants import DEFAULT_SOURCE, DEFAULT_OUTPUT_DIR
-from ..data.fetcher import Fetcher
-from ..data.calculator import Calculator
+from ..data.data_fetcher import DataFetcher
+from ..data.data_calculator import DataCalculator
 
 class Portfolio:
     """
@@ -39,14 +39,8 @@ class Portfolio:
         self._build_portfolio_and_calculate_metrics()
 
     def _fetch_data(self):
-        fetcher = Fetcher(
-            symbols=self.symbols, # Initial symbols for fetcher, will be overridden
-            start_date=self.start_date,
-            end_date=self.end_date,
-            source=self.source,
-            output_dir=DEFAULT_OUTPUT_DIR # Or a relevant output_dir
-        )
-        return fetcher.fetch_history_to_dataframe_from_start_end_date(
+        fetcher = DataFetcher(source=self.source)
+        return fetcher.fetch_stock_data(
             symbols=self.symbols,
             start_date=self.start_date,
             end_date=self.end_date
@@ -88,7 +82,8 @@ class Portfolio:
         self.portfolio_value_series = normalized_closes_df.mean(axis=1) 
 
         portfolio_df_for_calc = pd.DataFrame({'time': self.portfolio_value_series.index, 'close': self.portfolio_value_series.values})
-        self.performance_metrics = Calculator.calculate_series_performance_metrics(portfolio_df_for_calc, price_column='close')
+        calculator = DataCalculator()
+        self.performance_metrics = calculator._calculate_series_performance_metrics(portfolio_df_for_calc, price_column='close')
 
     def get_performance_metrics(self):
         return self.performance_metrics

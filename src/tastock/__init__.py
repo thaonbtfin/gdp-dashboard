@@ -5,7 +5,7 @@ This module provides tools for fetching, calculating, and managing stock data.
 """
 
 # Import key classes for easy access
-from .data.manager import DataManager
+from .data.data_manager import DataManager
 from .core.stock import Stock
 from .core.portfolio import Portfolio
 from .data.data_calculator import DataCalculator
