@@ -1,14 +1,12 @@
 """
-DataFetcher Module
+Data Fetcher Module
 
-This module provides the DataFetcher class for fetching stock data.
-It handles caching to avoid duplicate requests.
+This module provides classes for fetching stock data via API and orchestrating fetch workflows.
 """
 
 import pandas as pd
 from typing import Dict, List, Optional
 from datetime import datetime
-
 from vnstock import Vnstock
 from src.constants import DEFAULT_SOURCE
 
@@ -107,3 +105,5 @@ class DataFetcher:
         """Clear all cached data."""
         self._stock_data_cache.clear()
         self._financial_data_cache.clear()
+
+# Workflow classes are in workflow_fetcher.py to avoid circular imports
