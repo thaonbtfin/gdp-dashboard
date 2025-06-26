@@ -221,3 +221,36 @@ class DataFileManager:
         except Exception as e:
             print(f"Failed to copy history file: {e}")
             return False
+    
+    @staticmethod
+    def cleanup_old_date_folders(base_output_dir: str = 'data', keep_count: int = 3) -> bool:
+        """Remove old date folders, keeping only the latest ones"""
+        try:
+            base_dir = Path(base_output_dir)
+            
+            # Find all date folders (8-digit numeric folder names)
+            date_folders = [d for d in base_dir.iterdir() if d.is_dir() and d.name.isdigit() and len(d.name) == 8]
+            
+            if len(date_folders) <= keep_count:
+                print(f"Found {len(date_folders)} date folders, no cleanup needed (keeping {keep_count})")
+                return True
+            
+            # Sort by folder name (date) in descending order
+            date_folders.sort(key=lambda x: x.name, reverse=True)
+            
+            # Keep the latest ones, remove the rest
+            folders_to_keep = date_folders[:keep_count]
+            folders_to_remove = date_folders[keep_count:]
+            
+            print(f"Keeping {len(folders_to_keep)} latest date folders: {[f.name for f in folders_to_keep]}")
+            print(f"Removing {len(folders_to_remove)} old date folders: {[f.name for f in folders_to_remove]}")
+            
+            for folder in folders_to_remove:
+                shutil.rmtree(folder)
+                print(f"Removed: {folder.name}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Failed to cleanup date folders: {e}")
+            return False
