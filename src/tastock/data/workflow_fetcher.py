@@ -6,7 +6,7 @@ This module provides workflow classes for API-based data fetching.
 
 from typing import List
 from .data_manager import DataManager
-from ..workflows.wf_components import StructuredDataProcessor, FileCopier
+from ..workflows.wf_components import StructuredDataProcessor, FileCopier, DataFileManager
 from ..utils.helpers import Helpers
 
 class APIDataFetcher:
@@ -117,3 +117,7 @@ class DataWorkflowFetch:
             print("Schedule module not available. Install with: pip install schedule")
         except KeyboardInterrupt:
             print("\nScheduler stopped")
+    
+    def copy_history_to_root(self) -> bool:
+        """Copy history_data_all_symbols.csv to history_data.csv"""
+        return DataFileManager.copy_history_to_root('data')

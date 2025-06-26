@@ -4,7 +4,7 @@ import requests
 import streamlit as st
 import pandas as pd
 from src.constants import API_URL, DATA_HISTORY, GIST_URL_DH_HISTORY, GIST_URL_SAMPLE_HISTORY, GIST_URL_TH_HISTORY, DATA_DIR
-from src.tastock.data.manager import DataManager
+from src.tastock.data.data_manager import DataManager
 
 class Streamlit_def:
 

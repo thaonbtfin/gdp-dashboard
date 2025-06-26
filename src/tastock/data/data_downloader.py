@@ -7,13 +7,14 @@ This module provides classes for downloading CafeF data and orchestrating downlo
 import shutil
 import requests
 import zipfile
+import pandas as pd
 from datetime import datetime, timedelta, date
 from pathlib import Path
 from typing import Optional, Tuple
 from urllib.parse import urlparse
 from email.message import Message
 
-from ..workflows.wf_components import StructuredDataProcessor, FileCopier
+from ..workflows.wf_components import StructuredDataProcessor, FileCopier, DataFileManager
 
 class DataDownloader:
     """Handles downloading and extracting CafeF data"""
@@ -61,12 +62,25 @@ class DataDownloader:
         return filename_from_url if filename_from_url else "downloaded_file"
     
     def download_and_extract(self, target_date: Optional[date] = None) -> Tuple[bool, Optional[Path]]:
-        """Download and extract CafeF data"""
+        """Download and extract CafeF data, skip if already exists"""
         effective_date = self._get_effective_date(target_date)
         
         date_yyyymmdd = effective_date.strftime("%Y%m%d")
         date_ddmmyyyy = effective_date.strftime("%d%m%Y")
         
+        # Check if data is already extracted
+        expected_extract_dir = self.download_dir / f"CafeF.SolieuGD.Upto{date_ddmmyyyy}"
+        if self._is_data_already_available(expected_extract_dir):
+            print(f"Data already available at: {expected_extract_dir}")
+            return True, expected_extract_dir
+        
+        # Check if zip file already exists
+        expected_zip_file = self.download_dir / f"CafeF.SolieuGD.Upto{date_ddmmyyyy}.zip"
+        if expected_zip_file.exists():
+            print(f"Zip file already exists: {expected_zip_file}")
+            return self._extract_existing_zip(expected_zip_file, expected_extract_dir)
+        
+        # Download if not exists
         url = self.CAFEF_URL_TEMPLATE.format(
             date_yyyymmdd=date_yyyymmdd,
             date_ddmmyyyy=date_ddmmyyyy
@@ -89,18 +103,40 @@ class DataDownloader:
             # Extract if zip file
             if filename.lower().endswith('.zip'):
                 extract_dir = self.download_dir / Path(filename).stem
-                self._ensure_directory_exists(extract_dir, clean_if_exists=True)
-                
-                with zipfile.ZipFile(downloaded_file, 'r') as zip_ref:
-                    zip_ref.extractall(extract_dir)
-                
-                print(f"Extracted to: {extract_dir}")
-                return True, extract_dir
+                return self._extract_existing_zip(downloaded_file, extract_dir)
             
             return True, None
             
         except Exception as e:
             print(f"Download failed: {e}")
+            return False, None
+    
+    def _is_data_already_available(self, extract_dir: Path) -> bool:
+        """Check if extracted data is already available and valid"""
+        if not extract_dir.exists():
+            return False
+        
+        # Check if directory contains CSV files
+        csv_files = list(extract_dir.glob("*.csv"))
+        if len(csv_files) >= 3:  # Expect at least HSX, HNX, UPCOM files
+            print(f"Found {len(csv_files)} CSV files in {extract_dir}")
+            return True
+        
+        return False
+    
+    def _extract_existing_zip(self, zip_file: Path, extract_dir: Path) -> Tuple[bool, Optional[Path]]:
+        """Extract existing zip file"""
+        try:
+            self._ensure_directory_exists(extract_dir, clean_if_exists=True)
+            
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                zip_ref.extractall(extract_dir)
+            
+            print(f"Extracted to: {extract_dir}")
+            return True, extract_dir
+            
+        except Exception as e:
+            print(f"Extraction failed: {e}")
             return False, None
 
 class DataWorkflowDownload:
@@ -163,3 +199,120 @@ class DataWorkflowDownload:
             print("Schedule module not available. Install with: pip install schedule")
         except KeyboardInterrupt:
             print("\nScheduler stopped")
+    
+    def merge_all_portfolios_to_root(self) -> bool:
+        """Merge all portfolios data from latest date folder to root history file"""
+        try:
+            base_dir = Path(self.processor.base_output_dir)
+            
+            # Find latest date folder
+            date_folders = [d for d in base_dir.iterdir() if d.is_dir() and d.name.isdigit() and len(d.name) == 8]
+            if not date_folders:
+                print("No date folders found")
+                return False
+            
+            latest_date_folder = max(date_folders, key=lambda x: x.name)
+            print(f"Using latest date folder: {latest_date_folder.name}")
+            
+            # Find all portfolio folders
+            portfolio_folders = [d for d in latest_date_folder.iterdir() if d.is_dir()]
+            if not portfolio_folders:
+                print("No portfolio folders found")
+                return False
+            
+            all_symbols_data = {}
+            
+            # Collect data from all portfolios
+            for portfolio_folder in portfolio_folders:
+                history_file = portfolio_folder / 'history_data_all_symbols.csv'
+                if history_file.exists():
+                    try:
+                        df = pd.read_csv(history_file)
+                        if 'time' in df.columns:
+                            df = df.set_index('time')
+                            # Add all symbol columns to combined data
+                            for col in df.columns:
+                                if col not in all_symbols_data:
+                                    all_symbols_data[col] = df[col]
+                        print(f"Added data from {portfolio_folder.name}: {len(df.columns)} symbols")
+                    except Exception as e:
+                        print(f"Error reading {history_file}: {e}")
+            
+            if not all_symbols_data:
+                print("No valid data found to merge")
+                return False
+            
+            # Create merged DataFrame
+            merged_df = pd.DataFrame(all_symbols_data)
+            merged_df = merged_df.fillna(0)
+            merged_df = merged_df.reset_index()
+            
+            # Save to root
+            root_file = base_dir / 'history_data_all_symbols.csv'
+            merged_df.to_csv(root_file, index=False)
+            
+            print(f"Merged {len(merged_df.columns)-1} symbols to {root_file}")
+            return True
+            
+        except Exception as e:
+            print(f"Merge failed: {e}")
+            return False
+    
+    def merge_all_portfolios_perf_to_root(self) -> bool:
+        """Merge all portfolios performance metrics from latest date folder to root perf file"""
+        try:
+            base_dir = Path(self.processor.base_output_dir)
+            
+            # Find latest date folder
+            date_folders = [d for d in base_dir.iterdir() if d.is_dir() and d.name.isdigit() and len(d.name) == 8]
+            if not date_folders:
+                print("No date folders found")
+                return False
+            
+            latest_date_folder = max(date_folders, key=lambda x: x.name)
+            print(f"Using latest date folder for perf: {latest_date_folder.name}")
+            
+            # Find all portfolio folders
+            portfolio_folders = [d for d in latest_date_folder.iterdir() if d.is_dir()]
+            if not portfolio_folders:
+                print("No portfolio folders found")
+                return False
+            
+            all_perf_data = []
+            
+            # Collect performance data from all portfolios
+            for portfolio_folder in portfolio_folders:
+                perf_file = portfolio_folder / 'perf_all_symbols.csv'
+                if perf_file.exists():
+                    try:
+                        df = pd.read_csv(perf_file)
+                        if not df.empty:
+                            all_perf_data.append(df)
+                        print(f"Added perf data from {portfolio_folder.name}: {len(df)} symbols")
+                    except Exception as e:
+                        print(f"Error reading {perf_file}: {e}")
+            
+            if not all_perf_data:
+                print("No valid performance data found to merge")
+                return False
+            
+            # Combine all performance data
+            merged_perf_df = pd.concat(all_perf_data, ignore_index=True)
+            
+            # Remove duplicates (keep first occurrence)
+            merged_perf_df = merged_perf_df.drop_duplicates(subset=['symbol'], keep='first')
+            
+            # Save to root
+            root_perf_file = base_dir / 'perf_all_symbols.csv'
+            merged_perf_df.to_csv(root_perf_file, index=False)
+            
+            print(f"Merged {len(merged_perf_df)} symbols performance to {root_perf_file}")
+            return True
+            
+        except Exception as e:
+            print(f"Performance merge failed: {e}")
+            return False
+    
+    def copy_history_to_root(self) -> bool:
+        """Copy history_data_all_symbols.csv to history_data.csv"""
+        return DataFileManager.copy_history_to_root(str(self.processor.base_output_dir))
