@@ -198,3 +198,26 @@ class FileCopier:
             return latest_file
         
         return None
+
+class DataFileManager:
+    """Handles common data file operations"""
+    
+    @staticmethod
+    def copy_history_to_root(base_output_dir: str = 'data') -> bool:
+        """Copy history_data_all_symbols.csv to history_data.csv"""
+        try:
+            base_dir = Path(base_output_dir)
+            source_file = base_dir / 'history_data_all_symbols.csv'
+            target_file = base_dir / 'history_data.csv'
+            
+            if not source_file.exists():
+                print(f"Source file not found: {source_file}")
+                return False
+            
+            shutil.copy2(source_file, target_file)
+            print(f"Copied {source_file.name} to {target_file.name}")
+            return True
+            
+        except Exception as e:
+            print(f"Failed to copy history file: {e}")
+            return False
