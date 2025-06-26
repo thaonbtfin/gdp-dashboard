@@ -67,7 +67,7 @@ class TAstock_def:
         return stock_df
     
     @staticmethod
-    def _display_date_slider(stock_df):
+    def _display_date_slider(stock_df, key_suffix=""):
         """Displays the date range slider and returns the selected range."""
 
         # Add some spacing - Slider
@@ -88,7 +88,8 @@ class TAstock_def:
             min_value=min_value,
             max_value=max_value,
             value=[min_value, max_value],
-            format="YYYY-MM-DD"
+            format="YYYY-MM-DD",
+            key=f"date_slider{key_suffix}"
         )
 
         return from_date, to_date
@@ -203,7 +204,7 @@ class TAstock_st:
     """
 
     @staticmethod
-    def history_tab(stock_df):
+    def history_tab(stock_df, key_suffix=""):
         """Displays the history tab with stock chart and metrics."""
         # Check if we have cached moving averages data
         has_cached_ma = False
@@ -214,8 +215,41 @@ class TAstock_st:
         except Exception:
             pass
             
-        from_date, to_date = TAstock_def._display_date_slider(stock_df)
+        from_date, to_date = TAstock_def._display_date_slider(stock_df, key_suffix)
         TAstock_def._display_stock_chart(stock_df, from_date, to_date)
+    
+    @staticmethod
+    def history_sub_tab(stock_df_melted):
+        """Displays portfolio sub-tabs within the history tab."""
+        # Create portfolio sub-tabs
+        portfolio_tabs = st.tabs(["📊 All Portfolios", "VN100", "VN30", "DH", "TH"])
+        
+        if stock_df_melted.empty:
+            for tab in portfolio_tabs:
+                with tab:
+                    st.info("Không thể xử lý dữ liệu để hiển thị biểu đồ lịch sử. Vui lòng kiểm tra định dạng dữ liệu hoặc các thông báo lỗi trước đó.")
+        else:
+            # All Portfolios tab
+            with portfolio_tabs[0]:
+                TAstock_st.history_tab(stock_df_melted, "_all")
+            
+            # Individual portfolio tabs
+            from src.constants import SYMBOLS_VN100, SYMBOLS_VN30, SYMBOLS_DH, SYMBOLS_TH
+            portfolios = [
+                ("VN100", SYMBOLS_VN100),
+                ("VN30", SYMBOLS_VN30), 
+                ("DH", SYMBOLS_DH),
+                ("TH", SYMBOLS_TH)
+            ]
+            
+            for i, (portfolio_name, symbols) in enumerate(portfolios, 1):
+                with portfolio_tabs[i]:
+                    # Filter data for this portfolio
+                    portfolio_df = stock_df_melted[stock_df_melted['Symbol'].isin(symbols)]
+                    if portfolio_df.empty:
+                        st.info(f"Không có dữ liệu cho danh mục {portfolio_name}")
+                    else:
+                        TAstock_st.history_tab(portfolio_df, f"_{portfolio_name.lower()}")
         
     @staticmethod
     def _display_performance_metrics_table(raw_df):

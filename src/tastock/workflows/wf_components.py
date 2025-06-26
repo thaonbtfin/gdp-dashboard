@@ -52,6 +52,20 @@ class StructuredDataProcessor:
                 period=period
             )
             
+            # Fix VNINDEX symbol name and move to first position
+            if 'VNAll-INDEX' in stock_data:
+                vnindex_data = stock_data.pop('VNAll-INDEX')
+                new_stock_data = {'VNINDEX': vnindex_data}
+                new_stock_data.update(stock_data)
+                stock_data = new_stock_data
+                print("Renamed VNAll-INDEX to VNINDEX and moved to first position")
+            elif 'VNINDEX' in stock_data:
+                vnindex_data = stock_data.pop('VNINDEX')
+                new_stock_data = {'VNINDEX': vnindex_data}
+                new_stock_data.update(stock_data)
+                stock_data = new_stock_data
+                print("Moved VNINDEX to first position")
+            
             if not stock_data:
                 print("No data found")
                 return False
