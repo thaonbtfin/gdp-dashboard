@@ -416,3 +416,151 @@ class TAstock_st:
         
         # Fall back to calculating performance metrics from raw data
         TAstock_st._display_performance_metrics_table(raw_df)
+    
+    @staticmethod
+    def technical_analysis_tab(raw_df):
+        """Displays technical analysis tab with indicators and charts."""
+        if raw_df.empty:
+            st.info("Không có dữ liệu để phân tích kỹ thuật.")
+            return
+        
+        st.header("📈 Phân tích Kỹ thuật", divider="gray")
+        
+        # Symbol selection
+        symbol_columns = [col for col in raw_df.columns if col != 'time']
+        if not symbol_columns:
+            st.warning("Không tìm thấy mã chứng khoán nào để phân tích.")
+            return
+        
+        # Default to VNINDEX if available, otherwise first symbol
+        default_symbol = 'VNINDEX' if 'VNINDEX' in symbol_columns else symbol_columns[0]
+        
+        selected_symbol = st.selectbox(
+            "Chọn mã chứng khoán để phân tích:",
+            symbol_columns,
+            index=symbol_columns.index(default_symbol) if default_symbol in symbol_columns else 0
+        )
+        
+        # Get data for selected symbol
+        symbol_data = raw_df[['time', selected_symbol]].copy()
+        symbol_data = symbol_data.dropna()
+        symbol_data['time'] = pd.to_datetime(symbol_data['time'])
+        symbol_data = symbol_data.sort_values('time')
+        
+        if len(symbol_data) < 20:
+            st.warning("Không đủ dữ liệu để tính toán các chỉ báo kỹ thuật (cần ít nhất 20 điểm dữ liệu).")
+            return
+        
+        # Calculate technical indicators
+        TAstock_st._calculate_technical_indicators(symbol_data, selected_symbol)
+    
+    @staticmethod
+    def _calculate_technical_indicators(df, symbol):
+        """Calculate and display technical indicators."""
+        import numpy as np
+        
+        # Rename price column for easier access
+        df = df.rename(columns={symbol: 'price'})
+        
+        # Calculate Moving Averages
+        df['MA5'] = df['price'].rolling(window=5).mean()
+        df['MA10'] = df['price'].rolling(window=10).mean()
+        df['MA20'] = df['price'].rolling(window=20).mean()
+        
+        # Calculate RSI
+        def calculate_rsi(prices, window=14):
+            delta = prices.diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            return rsi
+        
+        df['RSI'] = calculate_rsi(df['price'])
+        
+        # Calculate MACD
+        def calculate_macd(prices, fast=12, slow=26, signal=9):
+            ema_fast = prices.ewm(span=fast).mean()
+            ema_slow = prices.ewm(span=slow).mean()
+            macd = ema_fast - ema_slow
+            signal_line = macd.ewm(span=signal).mean()
+            histogram = macd - signal_line
+            return macd, signal_line, histogram
+        
+        df['MACD'], df['MACD_Signal'], df['MACD_Histogram'] = calculate_macd(df['price'])
+        
+        # Display charts and indicators
+        TAstock_st._display_technical_charts(df, symbol)
+        TAstock_st._display_current_indicators(df, symbol)
+    
+    @staticmethod
+    def _display_technical_charts(df, symbol):
+        """Display technical analysis charts."""
+        # Price and Moving Averages Chart
+        st.subheader(f"📊 Biểu đồ giá và đường trung bình - {symbol}")
+        chart_data = df[['time', 'price', 'MA5', 'MA10', 'MA20']].set_index('time')
+        st.line_chart(chart_data)
+        
+        # RSI Chart
+        st.subheader("📈 Chỉ số RSI (Relative Strength Index)")
+        rsi_data = df[['time', 'RSI']].set_index('time')
+        st.line_chart(rsi_data)
+        
+        # RSI interpretation
+        current_rsi = df['RSI'].iloc[-1] if not df['RSI'].isna().all() else None
+        if current_rsi:
+            if current_rsi > 70:
+                st.warning(f"🔴 RSI hiện tại: {current_rsi:.2f} - Vùng quá mua")
+            elif current_rsi < 30:
+                st.success(f"🟢 RSI hiện tại: {current_rsi:.2f} - Vùng quá bán")
+            else:
+                st.info(f"🟡 RSI hiện tại: {current_rsi:.2f} - Vùng trung tính")
+        
+        # MACD Chart
+        st.subheader("📉 MACD (Moving Average Convergence Divergence)")
+        macd_data = df[['time', 'MACD', 'MACD_Signal']].set_index('time')
+        st.line_chart(macd_data)
+    
+    @staticmethod
+    def _display_current_indicators(df, symbol):
+        """Display current indicator values."""
+        st.subheader("📋 Chỉ báo hiện tại")
+        
+        latest = df.iloc[-1]
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                "Giá hiện tại",
+                f"{latest['price']:,.2f}",
+                delta=f"{latest['price'] - df['price'].iloc[-2]:+,.2f}" if len(df) > 1 else None
+            )
+        
+        with col2:
+            ma20_value = latest['MA20']
+            if not pd.isna(ma20_value):
+                st.metric(
+                    "MA20",
+                    f"{ma20_value:,.2f}",
+                    delta=f"{latest['price'] - ma20_value:+,.2f}"
+                )
+        
+        with col3:
+            rsi_value = latest['RSI']
+            if not pd.isna(rsi_value):
+                st.metric(
+                    "RSI (14)",
+                    f"{rsi_value:.2f}",
+                    delta="Quá mua" if rsi_value > 70 else "Quá bán" if rsi_value < 30 else "Trung tính"
+                )
+        
+        with col4:
+            macd_value = latest['MACD']
+            macd_signal = latest['MACD_Signal']
+            if not pd.isna(macd_value) and not pd.isna(macd_signal):
+                signal = "Tăng" if macd_value > macd_signal else "Giảm"
+                st.metric(
+                    "MACD",
+                    f"{macd_value:.4f}",
+                    delta=signal
+                )
