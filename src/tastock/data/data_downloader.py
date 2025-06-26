@@ -320,3 +320,37 @@ class DataWorkflowDownload:
     def cleanup_old_date_folders(self, keep_count: int = 3) -> bool:
         """Remove old date folders, keeping only the latest ones"""
         return DataFileManager.cleanup_old_date_folders(str(self.processor.base_output_dir), keep_count)
+    
+    def _fix_vnindex_symbol(self, stock_data: dict) -> dict:
+        """Rename VNAll-INDEX to VNINDEX in stock data"""
+        if 'VNAll-INDEX' in stock_data:
+            stock_data['VNINDEX'] = stock_data.pop('VNAll-INDEX')
+            print("Renamed VNAll-INDEX to VNINDEX")
+        return stock_data
+    
+    def _add_vnindex_data(self, stock_data: dict, start_date: str, end_date: str) -> dict:
+        """Add VNINDEX data to existing stock data"""
+        try:
+            from vnstock import Vnstock
+            print("Fetching VNINDEX data...")
+            
+            # Fetch VNINDEX data
+            vnstock_obj = Vnstock().stock(symbol='VNINDEX', source='VCI')
+            vnindex_data = vnstock_obj.quote.history(start=start_date, end=end_date)
+            
+            if not vnindex_data.empty:
+                # Rename columns to match expected format
+                if 'time' not in vnindex_data.columns and vnindex_data.index.name:
+                    vnindex_data = vnindex_data.reset_index()
+                    vnindex_data = vnindex_data.rename(columns={vnindex_data.columns[0]: 'time'})
+                
+                # Add VNINDEX to stock_data
+                stock_data['VNINDEX'] = vnindex_data
+                print(f"Added VNINDEX data: {len(vnindex_data)} records")
+            else:
+                print("No VNINDEX data available")
+                
+        except Exception as e:
+            print(f"Failed to fetch VNINDEX data: {e}")
+            
+        return stock_data

@@ -305,9 +305,13 @@ class DataManager:
                     '<Volume>': 'int64'
                 })
                 
-                # Filter symbols if specified
+                # Filter symbols if specified, but always include VNAll-INDEX
                 if symbols_filter:
-                    df = df[df['<Ticker>'].isin(symbols_filter)]
+                    # Add VNAll-INDEX to filter list if not present
+                    filter_symbols = list(symbols_filter)
+                    if 'VNAll-INDEX' not in filter_symbols and 'VNINDEX' in filter_symbols:
+                        filter_symbols.append('VNAll-INDEX')
+                    df = df[df['<Ticker>'].isin(filter_symbols)]
                 
                 # Skip if no data after filtering
                 if df.empty:
@@ -387,6 +391,22 @@ class DataManager:
                                 df_merged[col] = df_merged[col].fillna(0)
                         
                         stock_data[symbol] = df_merged.reset_index(drop=True)
+        
+        # Fix VNINDEX symbol name (VNAll-INDEX -> VNINDEX) and move to first position
+        if 'VNAll-INDEX' in stock_data:
+            vnindex_data = stock_data.pop('VNAll-INDEX')
+            # Create new ordered dict with VNINDEX first
+            new_stock_data = {'VNINDEX': vnindex_data}
+            new_stock_data.update(stock_data)
+            stock_data = new_stock_data
+            print("Renamed VNAll-INDEX to VNINDEX and moved to first position")
+        elif 'VNINDEX' in stock_data:
+            # Move existing VNINDEX to first position
+            vnindex_data = stock_data.pop('VNINDEX')
+            new_stock_data = {'VNINDEX': vnindex_data}
+            new_stock_data.update(stock_data)
+            stock_data = new_stock_data
+            print("Moved VNINDEX to first position")
         
         return stock_data
     

@@ -40,12 +40,7 @@ with history_tab:
     else:
         # Process data for history tab only if raw data (df) is available
         stock_df_melted = TAstock_def.get_stock_data(df.copy())
-        if stock_df_melted.empty:
-            # This implies df was not empty, but get_stock_data resulted in an empty df.
-            # TAstock_def.get_stock_data should have shown specific warnings/errors.
-            st.info("Không thể xử lý dữ liệu để hiển thị biểu đồ lịch sử. Vui lòng kiểm tra định dạng dữ liệu hoặc các thông báo lỗi trước đó.")
-        else:
-            TAstock_st.history_tab(stock_df_melted)
+        TAstock_st.history_sub_tab(stock_df_melted)
 
 with detail_tab:
     if df.empty:

@@ -52,6 +52,7 @@ SYMBOLS_TH = [
 
 # VN30
 SYMBOLS_VN30 = [
+    'VNINDEX',
     'ACB', 'BCM', 'BID', 'BVH', 'CTG', 'FPT', 'GAS', 'GVR', 'HDB', 'HPG',
     'LPB', 'MBB', 'MSN', 'MWG', 'PLX', 'SAB', 'SHB', 'SSB', 'SSI', 'STB',
     'TCB', 'TPB', 'VCB', 'VHM', 'VIB', 'VIC', 'VJC', 'VNM', 'VPB', 'VRE'
@@ -59,6 +60,7 @@ SYMBOLS_VN30 = [
 
 # VN100
 SYMBOLS_VN100 = [
+    'VNINDEX',
     'AAA', 'ACB', 'ANV', 'BCM', 'BID', 'BMP', 'BSI', 'BVH', 'BWE', 'CII',
     'CMG', 'CTD', 'CTG', 'CTR', 'CTS', 'DBC', 'DCM', 'DGC', 'DGW', 'DIG',
     'DPM', 'DSE', 'DXG', 'DXS', 'EIB', 'EVF', 'FPT', 'FRT', 'FTS', 'GAS',
