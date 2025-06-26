@@ -35,6 +35,9 @@ def main():
     # After processing all portfolios
     workflow.copy_history_to_root()
 
+    # Keep 3 date folders and Cleanup others
+    workflow.cleanup_old_date_folders()
+
     # Uncomment to schedule daily runs
     # workflow.schedule_workflow("09:00", 'VN30', SYMBOLS_VN30)
 

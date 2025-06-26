@@ -121,3 +121,7 @@ class DataWorkflowFetch:
     def copy_history_to_root(self) -> bool:
         """Copy history_data_all_symbols.csv to history_data.csv"""
         return DataFileManager.copy_history_to_root('data')
+    
+    def cleanup_old_date_folders(self, keep_count: int = 3) -> bool:
+        """Remove old date folders, keeping only the latest ones"""
+        return DataFileManager.cleanup_old_date_folders('data', keep_count)
