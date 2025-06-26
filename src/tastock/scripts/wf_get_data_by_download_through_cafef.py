@@ -36,6 +36,9 @@ def main():
     # After the merge operations
     workflow.copy_history_to_root()
 
+    # Keep 3 date folders and Cleanup others
+    workflow.cleanup_old_date_folders()
+
     # Uncomment to schedule daily runs
     # workflow.schedule_workflow("09:00", symbols=SYMBOLS_VN100, portfolio_name='VN100')
 
