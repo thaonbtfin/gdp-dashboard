@@ -198,7 +198,7 @@ def generate_canslim_signals(row, market_direction):
         'rs_rating': rs_rating
     }
 
-def generate_technical_signals(row):
+def generate_technical_signals(row, ma_data=None):
     """Generate Technical Analysis signals"""
     score = 0
     reasons = []
@@ -223,6 +223,22 @@ def generate_technical_signals(row):
     elif price_vs_sma20 < -5:
         reasons.append("Giá < SMA20 -5%: Yếu")
         score -= 1
+    
+    # Moving Average trend analysis
+    if ma_data:
+        current_price = ma_data['current_price']
+        sma_50 = ma_data['sma_50']
+        sma_200 = ma_data['sma_200']
+        
+        if current_price > sma_50 > sma_200:
+            reasons.append("Giá > MA50 > MA200: Xu hướng tăng mạnh")
+            score += 2
+        elif current_price < sma_50 < sma_200:
+            reasons.append("Giá < MA50 < MA200: Xu hướng giảm")
+            score -= 2
+        elif current_price > sma_50:
+            reasons.append("Giá > MA50: Tích cực")
+            score += 1
     
     # Volatility (for trend strength)
     if row['annual_std_dev_pct'] < 25:
@@ -317,22 +333,51 @@ def main():
         
         print(f"🔍 Analyzing {symbol}...")
         
+        # Prepare MA data for technical analysis
+        current_price = row['sma_20_current']
+        sma_50 = row['sma_50_current']
+        annual_return = row['annualized_return_pct']
+        ma_200 = current_price * (1 - annual_return/100 * 0.67)  # Estimate MA200
+        
+        ma_data = {
+            'current_price': current_price,
+            'sma_50': sma_50,
+            'sma_200': ma_200
+        }
+        
         # Generate individual signals
         value_signals = generate_value_signals(row)
         canslim_signals = generate_canslim_signals(row, market_direction)
-        technical_signals = generate_technical_signals(row)
+        technical_signals = generate_technical_signals(row, ma_data)
         
         # Generate combined signal
         combined = generate_combined_signal(value_signals, canslim_signals, technical_signals)
         
+        # Calculate MA50 and MA200 from available data
+        current_price = row['sma_20_current']
+        sma_50 = row['sma_50_current']
+        
+        # Calculate MA200 (estimate from trend)
+        annual_return = row['annualized_return_pct']
+        ma_200 = current_price * (1 - annual_return/100 * 0.67)  # Rough estimate
+        
+        # Calculate price vs MA ratios
+        price_vs_ma50_pct = ((current_price - sma_50) / sma_50) * 100 if sma_50 > 0 else 0
+        price_vs_ma200_pct = ((current_price - ma_200) / ma_200) * 100 if ma_200 > 0 else 0
+        
         # Compile results
         result = {
             'symbol': symbol,
-            'current_price': row['sma_20_current'],  # Using SMA20 as current price proxy
+            'current_price': current_price,
+            'sma_20': row['sma_20_current'],
+            'sma_50': sma_50,
+            'sma_200': round(ma_200, 2),
+            'price_vs_sma20_pct': row['price_vs_sma20_pct'],
+            'price_vs_sma50_pct': round(price_vs_ma50_pct, 2),
+            'price_vs_sma200_pct': round(price_vs_ma200_pct, 2),
             'annualized_return_pct': row['annualized_return_pct'],
             'volatility_pct': row['annual_std_dev_pct'],
             'rsi_current': row['rsi_current'],
-            'price_vs_sma20_pct': row['price_vs_sma20_pct'],
             
             # Relative Strength (vs VN-Index)
             'relative_strength_rating': calculate_relative_strength(
