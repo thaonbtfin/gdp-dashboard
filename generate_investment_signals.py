@@ -6,30 +6,86 @@ import numpy as np
 from datetime import datetime
 import os
 
-def calculate_market_direction(vnindex_data=None):
-    """Calculate market direction - simplified version"""
-    # Using VN-Index from existing data
+def calculate_market_direction(vnindex_row):
+    """Calculate market direction from VN-Index data"""
+    if vnindex_row is None:
+        return {
+            'direction': 'UNKNOWN',
+            'strength': 0,
+            'signal': 'NEUTRAL'
+        }
+    
+    # Get VN-Index metrics
+    current_price = vnindex_row['sma_20_current']  # Current price proxy
+    sma_50 = vnindex_row['sma_50_current']
+    annual_return = vnindex_row['annualized_return_pct']
+    rsi = vnindex_row['rsi_current']
+    
+    # Calculate trend direction
+    if current_price > sma_50 and annual_return > 5:
+        direction = 'UPTREND'
+        strength = min(annual_return, 30)  # Cap at 30%
+    elif current_price < sma_50 and annual_return < -5:
+        direction = 'DOWNTREND'
+        strength = min(abs(annual_return), 30)
+    else:
+        direction = 'SIDEWAYS'
+        strength = abs(annual_return)
+    
     return {
-        'direction': 'UPTREND',  # Based on current market trend
-        'strength': 15.2,
-        'signal': 'POSITIVE'
+        'direction': direction,
+        'strength': round(strength, 1),
+        'signal': 'POSITIVE' if direction == 'UPTREND' else 'NEGATIVE' if direction == 'DOWNTREND' else 'NEUTRAL',
+        'vnindex_return': annual_return,
+        'vnindex_rsi': rsi
     }
 
-def calculate_relative_strength(annual_return, market_return=13.0):
+def calculate_relative_strength(annual_return, market_return):
     """Calculate Relative Strength Rating (1-99)"""
     if market_return == 0:
         return 50
     
+    # Calculate relative performance vs market
     relative_performance = annual_return / market_return
-    rs_rating = min(99, max(1, relative_performance * 50 + 50))
-    return round(rs_rating, 1)
+    
+    # Convert to 1-99 scale with proper distribution
+    if relative_performance >= 2.0:  # 2x market performance
+        rs_rating = 99
+    elif relative_performance >= 1.5:  # 1.5x market
+        rs_rating = 90 + (relative_performance - 1.5) * 18  # 90-99
+    elif relative_performance >= 1.0:  # Equal to market
+        rs_rating = 50 + (relative_performance - 1.0) * 80  # 50-90
+    elif relative_performance >= 0.5:  # Half market performance
+        rs_rating = 20 + (relative_performance - 0.5) * 60  # 20-50
+    elif relative_performance >= 0:  # Positive but weak
+        rs_rating = 10 + relative_performance * 20  # 10-20
+    else:  # Negative performance
+        rs_rating = max(1, 10 + relative_performance * 10)  # 1-10
+    
+    return round(min(99, max(1, rs_rating)), 1)
 
 def generate_value_signals(row):
     """Generate Value Investing signals"""
-    pe_ratio = 15.0  # Estimated average P/E
-    pb_ratio = 2.0   # Estimated average P/B
-    roe = abs(row['annualized_return_pct']) * 0.8  # Estimate ROE from returns
-    debt_equity = 0.6  # Estimated average
+    # Estimate financial ratios from available data
+    annual_return = row['annualized_return_pct']
+    volatility = row['annual_std_dev_pct']
+    
+    # Estimate P/E based on return and volatility (higher return, lower volatility = lower P/E)
+    if annual_return > 20:
+        pe_ratio = max(8, 20 - annual_return * 0.3)
+    elif annual_return > 0:
+        pe_ratio = 15 + (20 - annual_return) * 0.5
+    else:
+        pe_ratio = 25 + abs(annual_return) * 0.5
+    
+    # Estimate P/B (lower for value stocks)
+    pb_ratio = max(0.5, 2.5 - annual_return * 0.05)
+    
+    # Estimate ROE from returns (conservative estimate)
+    roe = max(0, abs(annual_return) * 0.7)
+    
+    # Estimate Debt/Equity (higher volatility suggests higher leverage)
+    debt_equity = min(2.0, 0.3 + volatility * 0.02)
     
     score = 0
     reasons = []
@@ -57,6 +113,15 @@ def generate_value_signals(row):
     elif row['annual_std_dev_pct'] > 50:
         reasons.append("Volatility cao: Rủi ro")
         score -= 1
+    
+    # Ensure we always have at least one reason
+    if not reasons:
+        if score > 0:
+            reasons.append("Các chỉ số tài chính tích cực")
+        elif score < 0:
+            reasons.append("Các chỉ số tài chính tiêu cực")
+        else:
+            reasons.append("Các chỉ số tài chính trung tính")
     
     if score >= 3:
         signal = "BUY"
@@ -93,7 +158,8 @@ def generate_canslim_signals(row, market_direction):
         score += 1
     
     # Leader or Laggard (using relative strength)
-    rs_rating = calculate_relative_strength(row['annualized_return_pct'])
+    market_return = market_direction.get('vnindex_return', 13.0)
+    rs_rating = calculate_relative_strength(row['annualized_return_pct'], market_return)
     if rs_rating >= 80:
         reasons.append("RS ≥80: Dẫn đầu")
         score += 2
@@ -108,6 +174,15 @@ def generate_canslim_signals(row, market_direction):
     elif market_direction['direction'] == 'DOWNTREND':
         reasons.append("Thị trường giảm: Xấu")
         score -= 2
+    
+    # Ensure we always have at least one reason
+    if not reasons:
+        if score > 0:
+            reasons.append("Tín hiệu CANSLIM tích cực")
+        elif score < 0:
+            reasons.append("Tín hiệu CANSLIM tiêu cực")
+        else:
+            reasons.append("Tín hiệu CANSLIM trung tính")
     
     if score >= 4:
         signal = "BUY"
@@ -156,6 +231,15 @@ def generate_technical_signals(row):
     elif row['annual_std_dev_pct'] > 60:
         reasons.append("Volatility cao: Không ổn định")
         score -= 1
+    
+    # Ensure we always have at least one reason
+    if not reasons:
+        if score > 0:
+            reasons.append("Tín hiệu kỹ thuật tích cực")
+        elif score < 0:
+            reasons.append("Tín hiệu kỹ thuật tiêu cực")
+        else:
+            reasons.append("Tín hiệu kỹ thuật trung tính")
     
     if score >= 3:
         signal = "BUY"
@@ -206,9 +290,16 @@ def main():
     df = pd.read_csv(perf_file)
     print(f"📊 Loaded {len(df)} symbols from {perf_file}")
     
-    # Calculate market direction
-    market_direction = calculate_market_direction()
+    # Get VN-Index data for market direction
+    vnindex_row = df[df['symbol'] == 'VNINDEX']
+    if not vnindex_row.empty:
+        vnindex_data = vnindex_row.iloc[0]
+        market_direction = calculate_market_direction(vnindex_data)
+    else:
+        market_direction = calculate_market_direction(None)
+    
     print(f"📈 Market Direction: {market_direction['direction']} ({market_direction['strength']}%)")
+    print(f"📊 VN-Index Return: {market_direction.get('vnindex_return', 'N/A')}%")
     
     # Generate signals for each stock
     results = []
@@ -239,8 +330,11 @@ def main():
             'rsi_current': row['rsi_current'],
             'price_vs_sma20_pct': row['price_vs_sma20_pct'],
             
-            # Relative Strength
-            'relative_strength_rating': calculate_relative_strength(row['annualized_return_pct']),
+            # Relative Strength (vs VN-Index)
+            'relative_strength_rating': calculate_relative_strength(
+                row['annualized_return_pct'], 
+                market_direction.get('vnindex_return', 13.0)
+            ),
             
             # Value Investing
             'value_signal': value_signals['signal'],
