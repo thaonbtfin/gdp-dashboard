@@ -280,8 +280,12 @@ def generate_combined_signal(value_signal, canslim_signal, technical_signal):
 def main():
     """Generate investment signals from existing performance data"""
     
+    # Get script directory and project root
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.join(script_dir, '../../..')
+    
     # Read existing performance data
-    perf_file = '.temp/20250626/perf_all_symbols_20250626.csv'
+    perf_file = os.path.join(project_root, '.temp/20250626/perf_all_symbols_20250626.csv')
     
     if not os.path.exists(perf_file):
         print(f"❌ File not found: {perf_file}")
@@ -371,8 +375,10 @@ def main():
     # Sort by total score (best signals first)
     results_df = results_df.sort_values('total_score', ascending=False)
     
-    # Save to CSV
-    output_file = 'investment_signals_complete.csv'
+    # Save to CSV in data directory
+    data_dir = os.path.join(project_root, 'data')
+    os.makedirs(data_dir, exist_ok=True)
+    output_file = os.path.join(data_dir, 'investment_signals_complete.csv')
     results_df.to_csv(output_file, index=False)
     
     print(f"\n{'='*60}")
