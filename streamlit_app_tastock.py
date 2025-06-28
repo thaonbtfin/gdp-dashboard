@@ -32,7 +32,7 @@ if df.empty:
     # Still create tabs so user can attempt to load data again.
     # Content within tabs will show specific messages.
 
-history_tab, technical_tab, detail_tab = st.tabs(["📁 History", "📈 Phân tích kỹ thuật", "🔍 Details"])
+history_tab, investment_tab, technical_tab, detail_tab = st.tabs(["📁 History", "💼 Phân tích Đầu tư", "📈 Phân tích kỹ thuật", "🔍 Details"])
 
 with history_tab:
     if df.empty:
@@ -41,6 +41,12 @@ with history_tab:
         # Process data for history tab only if raw data (df) is available
         stock_df_melted = TAstock_def.get_stock_data(df.copy())
         TAstock_st.history_sub_tab(stock_df_melted)
+
+with investment_tab:
+    if df.empty:
+        st.info("Không có dữ liệu để phân tích đầu tư. Vui lòng chọn hoặc tải lên dữ liệu hợp lệ.")
+    else:
+        TAstock_st.investment_analysis_tab(df)
 
 with technical_tab:
     if df.empty:
