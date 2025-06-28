@@ -812,23 +812,42 @@ class TAstock_st:
         # Create indicator summary data
         indicators_data = []
         
-        # Moving Averages Analysis
+        # Moving Averages Analysis - following rules: Giá > MA = tăng, < MA = giảm
         current_price = latest['price']
         
+        # Focus on key MAs as per rules: MA20, MA50, MA200
         mas = {
-            'MA5': 'MA(5)',
-            'MA10': 'MA(10)', 
             'MA20': 'MA(20)',
             'MA50': 'MA(50)',
-            'MA100': 'MA(100)',
             'MA200': 'MA(200)'
         }
+        
+        # Check for Golden Cross / Death Cross patterns
+        golden_cross = False
+        death_cross = False
+        if all(ma in df.columns for ma in ['MA50', 'MA200']) and len(df) > 1:
+            current_ma50 = latest['MA50']
+            current_ma200 = latest['MA200']
+            prev_ma50 = df['MA50'].iloc[-2]
+            prev_ma200 = df['MA200'].iloc[-2]
+            
+            if current_ma50 > current_ma200 and prev_ma50 <= prev_ma200:
+                golden_cross = True
+            elif current_ma50 < current_ma200 and prev_ma50 >= prev_ma200:
+                death_cross = True
         
         for ma_key, ma_name in mas.items():
             if ma_key in df.columns and not pd.isna(latest[ma_key]):
                 ma_value = latest[ma_key]
                 signal = "MUA" if current_price > ma_value else "BÁN"
                 color = "🟢" if signal == "MUA" else "🔴"
+                
+                # Add special notation for key patterns
+                if ma_key == 'MA50' and golden_cross:
+                    signal += " (Golden Cross)"
+                elif ma_key == 'MA50' and death_cross:
+                    signal += " (Death Cross)"
+                
                 indicators_data.append({
                     'Chỉ báo': ma_name,
                     'Giá trị': f"{ma_value:.2f}",
@@ -836,7 +855,7 @@ class TAstock_st:
                     'Loại': 'Đường trung bình'
                 })
         
-        # Oscillators
+        # Oscillators following rules document specifications
         oscillators = [
             ('RSI', 'RSI(14)', lambda x: "MUA" if x < 30 else "BÁN" if x > 70 else "TRUNG TÍNH"),
             ('Stoch_K', 'Stochastic %K', lambda x: "MUA" if x < 20 else "BÁN" if x > 80 else "TRUNG TÍNH"),
@@ -856,38 +875,60 @@ class TAstock_st:
                     'Loại': 'Dao động'
                 })
         
-        # MACD Analysis
+        # MACD Analysis - following rules: MACD line cắt lên signal line = Buy
         if 'MACD' in df.columns and 'MACD_Signal' in df.columns:
             macd_val = latest['MACD']
             macd_signal = latest['MACD_Signal']
             if not pd.isna(macd_val) and not pd.isna(macd_signal):
-                signal = "MUA" if macd_val > macd_signal else "BÁN"
+                # Check for crossover signal
+                if len(df) > 1:
+                    prev_macd = df['MACD'].iloc[-2]
+                    prev_signal = df['MACD_Signal'].iloc[-2]
+                    if macd_val > macd_signal and prev_macd <= prev_signal:
+                        signal = "MUA"  # Bullish crossover
+                    elif macd_val < macd_signal and prev_macd >= prev_signal:
+                        signal = "BÁN"  # Bearish crossover
+                    else:
+                        signal = "MUA" if macd_val > macd_signal else "BÁN"
+                else:
+                    signal = "MUA" if macd_val > macd_signal else "BÁN"
+                
                 color = "🟢" if signal == "MUA" else "🔴"
                 indicators_data.append({
-                    'Chỉ báo': 'MACD(12,26)',
+                    'Chỉ báo': 'MACD(12,26,9)',
                     'Giá trị': f"{macd_val:.4f}",
                     'Tín hiệu': f"{color} {signal}",
                     'Loại': 'Momentum'
                 })
         
-        # Bollinger Bands
+        # Bollinger Bands - following volatility analysis rules
         if all(col in df.columns for col in ['BB_Upper', 'BB_Lower', 'BB_Middle']):
             bb_upper = latest['BB_Upper']
             bb_lower = latest['BB_Lower']
+            bb_middle = latest['BB_Middle']
             if not pd.isna(bb_upper) and not pd.isna(bb_lower):
+                # Calculate position within bands
+                bb_position = (current_price - bb_lower) / (bb_upper - bb_lower) if bb_upper != bb_lower else 0.5
+                
                 if current_price > bb_upper:
-                    signal = "BÁN"
+                    signal = "BÁN (Quá mua)"
                     color = "🔴"
                 elif current_price < bb_lower:
-                    signal = "MUA"
+                    signal = "MUA (Quá bán)"
                     color = "🟢"
+                elif bb_position > 0.8:
+                    signal = "CẢNH BÁO (Gần quá mua)"
+                    color = "🟡"
+                elif bb_position < 0.2:
+                    signal = "CẢNH BÁO (Gần quá bán)"
+                    color = "🟡"
                 else:
                     signal = "TRUNG TÍNH"
                     color = "🟡"
                 
                 indicators_data.append({
-                    'Chỉ báo': 'Bollinger Bands',
-                    'Giá trị': f"{bb_upper:.2f}/{bb_lower:.2f}",
+                    'Chỉ báo': 'Bollinger Bands(20,2)',
+                    'Giá trị': f"{bb_upper:.2f}/{bb_middle:.2f}/{bb_lower:.2f}",
                     'Tín hiệu': f"{color} {signal}",
                     'Loại': 'Volatility'
                 })
@@ -931,14 +972,13 @@ class TAstock_st:
                 confidence_card = TechnicalHelper.create_signal_summary_card("CONFIDENCE", f"{confidence:.0f}%", "Độ tin cậy")
                 st.markdown(confidence_card, unsafe_allow_html=True)
             
-            # Enhanced recommendation with styling
-            
-            if buy_signals > sell_signals:
+            # Enhanced recommendation following rules methodology
+            if buy_signals > sell_signals and buy_signals >= 3:  # Need minimum signals
                 recommendation = "MUA"
-            elif sell_signals > buy_signals:
+            elif sell_signals > buy_signals and sell_signals >= 3:
                 recommendation = "BÁN"
             else:
-                recommendation = "TRUNG TÍNH"
+                recommendation = "HOLD"  # Use HOLD instead of TRUNG TÍNH for consistency
             
             recommendation_html = TechnicalHelper.create_recommendation_card(
                 recommendation, buy_signals, sell_signals, confidence
@@ -995,3 +1035,210 @@ class TAstock_st:
                 tech_summary.get('volatility_rating', 'N/A'),
                 delta=f"{tech_summary.get('volatility_value', 0):.1f}%" if tech_summary.get('volatility_value') else None
             )
+    
+    @staticmethod
+    def _display_investment_summary(signals_df):
+        """Display investment summary"""
+        st.header("📊 Tổng hợp Phân tích Đầu tư", divider="gray")
+        
+        # Market direction
+        if 'market_direction' in signals_df.columns:
+            market_direction = signals_df['market_direction'].iloc[0]
+            st.subheader(f"📈 Hướng thị trường: {market_direction}")
+        
+        # Signal distribution
+        signal_counts = signals_df['final_signal'].value_counts()
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            buy_count = signal_counts.get('BUY', 0)
+            buy_pct = (buy_count / len(signals_df) * 100) if len(signals_df) > 0 else 0
+            st.metric("🟢 Tín hiệu MUA", f"{buy_count} cổ phiếu", f"{buy_pct:.1f}%")
+        
+        with col2:
+            sell_count = signal_counts.get('SELL', 0)
+            sell_pct = (sell_count / len(signals_df) * 100) if len(signals_df) > 0 else 0
+            st.metric("🔴 Tín hiệu BÁN", f"{sell_count} cổ phiếu", f"{sell_pct:.1f}%")
+        
+        with col3:
+            hold_count = signal_counts.get('HOLD', 0)
+            hold_pct = (hold_count / len(signals_df) * 100) if len(signals_df) > 0 else 0
+            st.metric("🟡 Tín hiệu HOLD", f"{hold_count} cổ phiếu", f"{hold_pct:.1f}%")
+        
+        # Top recommendations
+        st.subheader("🎯 Top 10 Khuyến nghị MUA")
+        buy_stocks = signals_df[signals_df['final_signal'] == 'BUY'].head(10)
+        if not buy_stocks.empty:
+            buy_display = buy_stocks[['symbol', 'total_score', 'annualized_return_pct', 'relative_strength_rating']]
+            buy_display.columns = ['Mã CK', 'Điểm tổng', 'Return %', 'RS Rating']
+            st.dataframe(buy_display, hide_index=True)
+    
+    @staticmethod
+    def _display_value_investing_tab(signals_df):
+        """Display Value Investing analysis"""
+        with st.expander("📖 Nguyên tắc Đầu tư Dài hạn (Benjamin Graham & Warren Buffett)"):
+            st.markdown("""
+            ### 🎯 Mục tiêu:
+            Tìm cổ phiếu có giá thị trường thấp hơn giá trị nội tại, mua và nắm giữ dài hạn.
+            
+            ### 📊 Các chỉ số chính:
+            - **P/E < 15**: Hấp dẫn theo Graham
+            - **P/B < 1.5**: Thường là tốt
+            - **ROE > 15%**: Ổn định qua 5-10 năm
+            - **Debt/Equity < 0.5**: Lý tưởng
+            - **Margin of Safety ≥ 30%**: Quy tắc cốt lõi
+            """)
+        
+        # Value signals analysis
+        st.subheader("📊 Phân tích Tín hiệu Value Investing")
+        value_signals = signals_df['value_signal'].value_counts()
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("BUY", value_signals.get('BUY', 0))
+        with col2:
+            st.metric("HOLD", value_signals.get('HOLD', 0))
+        with col3:
+            st.metric("SELL", value_signals.get('SELL', 0))
+        
+        # Top Value picks
+        st.subheader("🎯 Top Value Picks")
+        value_buy = signals_df[signals_df['value_signal'] == 'BUY'].sort_values('value_score', ascending=False).head(10)
+        if not value_buy.empty:
+            value_display = value_buy[['symbol', 'value_score', 'pe_estimate', 'roe_estimate']]
+            value_display.columns = ['Mã CK', 'Value Score', 'P/E ước tính', 'ROE ước tính']
+            st.dataframe(value_display, hide_index=True)
+    
+    @staticmethod
+    def _display_canslim_tab(signals_df):
+        """Display CANSLIM analysis"""
+        with st.expander("📖 Nguyên tắc CANSLIM (William O'Neil)"):
+            st.markdown("""
+            ### 🎯 Mục tiêu:
+            Kết hợp tăng trưởng lợi nhuận và phân tích kỹ thuật để tìm cổ phiếu tăng trưởng mạnh.
+            
+            ### 🔤 CANSLIM viết tắt:
+            - **C**: Current Earnings ≥ 25%
+            - **A**: Annual Earnings ≥ 25% trong 3 năm
+            - **N**: New Product/Service
+            - **S**: Supply and Demand (Volume cao)
+            - **L**: Leader (RS Rating ≥ 80)
+            - **I**: Institutional Sponsorship
+            - **M**: Market Direction (**Bắt buộc xu hướng tăng**)
+            """)
+        
+        # CANSLIM signals analysis
+        st.subheader("📊 Phân tích Tín hiệu CANSLIM")
+        canslim_signals = signals_df['canslim_signal'].value_counts()
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("BUY", canslim_signals.get('BUY', 0))
+        with col2:
+            st.metric("HOLD", canslim_signals.get('HOLD', 0))
+        with col3:
+            st.metric("SELL", canslim_signals.get('SELL', 0))
+        
+        # Top CANSLIM picks
+        st.subheader("🎯 Top CANSLIM Picks")
+        canslim_buy = signals_df[signals_df['canslim_signal'] == 'BUY'].sort_values('canslim_score', ascending=False).head(10)
+        if not canslim_buy.empty:
+            canslim_display = canslim_buy[['symbol', 'canslim_score', 'relative_strength_rating', 'annualized_return_pct']]
+            canslim_display.columns = ['Mã CK', 'CANSLIM Score', 'RS Rating', 'Return %']
+            st.dataframe(canslim_display, hide_index=True)
+    
+    @staticmethod
+    def _display_technical_investing_tab(signals_df):
+        """Display Technical Analysis investing tab"""
+        with st.expander("📖 Nguyên tắc Trendline (Phân tích kỹ thuật)"):
+            st.markdown("""
+            ### 🎯 Mục tiêu:
+            Bám theo xu hướng giá để Buy/Sell hợp thời điểm.
+            
+            ### 📊 Công cụ chính:
+            - **Trendline**: Nối đáy trong uptrend, nối đỉnh trong downtrend
+            - **Moving Average**: MA20, MA50, MA200
+            - **MACD**: Cắt lên signal = Buy, cắt xuống = Sell
+            - **RSI**: <30 quá bán (Buy), >70 quá mua (Sell)
+            - **Volume**: Xác nhận xu hướng
+            """)
+        
+        # Technical signals analysis
+        st.subheader("📊 Phân tích Tín hiệu Technical")
+        technical_signals = signals_df['technical_signal'].value_counts()
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("BUY", technical_signals.get('BUY', 0))
+        with col2:
+            st.metric("HOLD", technical_signals.get('HOLD', 0))
+        with col3:
+            st.metric("SELL", technical_signals.get('SELL', 0))
+        
+        # Top Technical picks
+        st.subheader("🎯 Top Technical Picks")
+        technical_buy = signals_df[signals_df['technical_signal'] == 'BUY'].sort_values('technical_score', ascending=False).head(10)
+        if not technical_buy.empty:
+            technical_display = technical_buy[['symbol', 'technical_score', 'rsi_current', 'price_vs_sma20_pct']]
+            technical_display.columns = ['Mã CK', 'Technical Score', 'RSI', 'Giá vs SMA20 %']
+            st.dataframe(technical_display, hide_index=True)
+    
+    @staticmethod
+    def investment_analysis_tab(raw_df):
+        """Investment Analysis tab with 3 methodologies"""
+        if raw_df.empty:
+            st.info("Không có dữ liệu để phân tích đầu tư.")
+            return
+        
+        # Try to load investment signals data
+        try:
+            import os
+            
+            # Try multiple possible paths
+            possible_paths = [
+                'data/investment_signals_complete.csv',
+                './data/investment_signals_complete.csv',
+                '/workspaces/gdp-dashboard/data/investment_signals_complete.csv',
+                os.path.join(os.getcwd(), 'data/investment_signals_complete.csv')
+            ]
+            
+            signals_df = None
+            found_path = None
+            
+            for path in possible_paths:
+                if os.path.exists(path):
+                    signals_df = pd.read_csv(path)
+                    found_path = path
+                    break
+            
+            if signals_df is not None:
+                st.success(f"✅ Đã tải {len(signals_df)} tín hiệu đầu tư từ {found_path}")
+            else:
+                st.warning("❌ Không tìm thấy file investment_signals_complete.csv")
+                st.info("Vui lòng chạy: `python src/tastock/scripts/generate_investment_signals.py`")
+                st.info(f"Thư mục hiện tại: {os.getcwd()}")
+                return
+                
+        except Exception as e:
+            st.error(f"❌ Lỗi khi tải dữ liệu: {e}")
+            return
+        
+        # Create tabs
+        main_tab, value_tab, canslim_tab, technical_tab = st.tabs([
+            "📊 Tổng hợp so sánh 3 trường phái",
+            "🏛️ Đầu tư dài hạn (Value)", 
+            "📈 CANSLIM",
+            "📉 Trendline (Kỹ thuật)"
+        ])
+        
+        with main_tab:
+            TAstock_st._display_investment_summary(signals_df)
+        
+        with value_tab:
+            TAstock_st._display_value_investing_tab(signals_df)
+        
+        with canslim_tab:
+            TAstock_st._display_canslim_tab(signals_df)
+        
+        with technical_tab:
+            TAstock_st._display_technical_investing_tab(signals_df)
