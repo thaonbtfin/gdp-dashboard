@@ -350,6 +350,8 @@ class DataManager:
                     else:
                         # Concatenate if symbol exists in multiple files
                         stock_data[symbol] = pd.concat([stock_data[symbol], symbol_df], ignore_index=True)
+                        # Remove duplicates based on time and sort
+                        stock_data[symbol] = stock_data[symbol].drop_duplicates(subset=['time'], keep='last')
                         stock_data[symbol] = stock_data[symbol].sort_values('time').reset_index(drop=True)
                         
             except Exception as e:
@@ -358,16 +360,26 @@ class DataManager:
         
         # Trim data to exact period length if specified
         if period:
-            # Find the symbol with the most data to use as base
+            # Find the symbol with the most data to use as base, prioritize VNINDEX
             max_symbol = None
             max_count = 0
-            for symbol in stock_data:
-                df = stock_data[symbol]
+            
+            # First check if VNINDEX exists and has data
+            if 'VNINDEX' in stock_data:
+                df = stock_data['VNINDEX']
                 if not df.empty and 'time' in df.columns:
-                    count = len(df)
-                    if count > max_count:
-                        max_count = count
-                        max_symbol = symbol
+                    max_symbol = 'VNINDEX'
+                    max_count = len(df)
+            
+            # If VNINDEX not available or empty, find symbol with most data
+            if max_symbol is None:
+                for symbol in stock_data:
+                    df = stock_data[symbol]
+                    if not df.empty and 'time' in df.columns:
+                        count = len(df)
+                        if count > max_count:
+                            max_count = count
+                            max_symbol = symbol
             
             if max_symbol:
                 # Use the most complete symbol's last 'period' dates as base
@@ -385,10 +397,13 @@ class DataManager:
                         complete_df = pd.DataFrame({'time': base_times})
                         df_merged = complete_df.merge(df_filtered, on='time', how='left')
                         
-                        # Fill missing values with 0
+                        # Fill missing values - use forward fill for VNINDEX, 0 for others
                         for col in df_merged.columns:
                             if col != 'time':
-                                df_merged[col] = df_merged[col].fillna(0)
+                                if symbol == 'VNINDEX':
+                                    df_merged[col] = df_merged[col].ffill().bfill()
+                                else:
+                                    df_merged[col] = df_merged[col].fillna(0)
                         
                         stock_data[symbol] = df_merged.reset_index(drop=True)
         

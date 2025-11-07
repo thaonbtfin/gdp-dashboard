@@ -30,7 +30,18 @@ class DataStorage:
         
     def _ensure_data_directories(self):
         """Create the necessary directory structure for data storage."""
-        os.makedirs(self.base_output_dir, exist_ok=True)
+        try:
+            # Convert to absolute path to avoid relative path issues
+            abs_path = os.path.abspath(self.base_output_dir)
+            os.makedirs(abs_path, exist_ok=True)
+            self.base_output_dir = abs_path
+        except PermissionError as e:
+            # If we can't create the directory, try using a temp directory
+            import tempfile
+            temp_dir = os.path.join(tempfile.gettempdir(), 'tastock_data')
+            os.makedirs(temp_dir, exist_ok=True)
+            self.base_output_dir = temp_dir
+            print(f"Warning: Could not create {self.base_output_dir}, using {temp_dir} instead")
         
     def _get_dated_folder_name(self) -> str:
         """Get a folder name based on current date."""
@@ -39,7 +50,11 @@ class DataStorage:
     def _create_dated_folder(self) -> str:
         """Create and return a dated folder path."""
         dated_folder = os.path.join(self.base_output_dir, self._get_dated_folder_name())
-        os.makedirs(dated_folder, exist_ok=True)
+        try:
+            os.makedirs(dated_folder, exist_ok=True)
+        except PermissionError:
+            # If we can't create the dated folder, use the base directory
+            dated_folder = self.base_output_dir
         return dated_folder
     
     def _create_portfolio_folder(self, portfolio_name: str, dated_folder: str = None) -> str:
@@ -47,11 +62,15 @@ class DataStorage:
         if dated_folder is None:
             dated_folder = self._create_dated_folder()
         portfolio_folder = os.path.join(dated_folder, portfolio_name)
-        os.makedirs(portfolio_folder, exist_ok=True)
-        
-        # Create symbols subfolder
-        symbols_folder = os.path.join(portfolio_folder, "symbols")
-        os.makedirs(symbols_folder, exist_ok=True)
+        try:
+            os.makedirs(portfolio_folder, exist_ok=True)
+            
+            # Create symbols subfolder
+            symbols_folder = os.path.join(portfolio_folder, "symbols")
+            os.makedirs(symbols_folder, exist_ok=True)
+        except PermissionError:
+            # If we can't create portfolio folder, use the dated folder
+            portfolio_folder = dated_folder
         
         return portfolio_folder
     
@@ -114,9 +133,16 @@ class DataStorage:
             f"history_{portfolio_name}_{self._get_dated_folder_name()}.csv"
         )
         
+        # Sort symbols: VNINDEX first, then alphabetically
+        sorted_symbols = sorted(data.keys())
+        if 'VNINDEX' in sorted_symbols:
+            sorted_symbols.remove('VNINDEX')
+            sorted_symbols.insert(0, 'VNINDEX')
+        
         # Merge on 'time' column
         dfs = []
-        for symbol, df in data.items():
+        for symbol in sorted_symbols:
+            df = data[symbol]
             if 'time' in df.columns and 'close' in df.columns:
                 temp_df = df[['time', 'close']].copy()
                 temp_df['time'] = temp_df['time'].astype(str)
@@ -125,6 +151,19 @@ class DataStorage:
         
         if dfs:
             merged_df = pd.concat(dfs, axis=1, join='outer').reset_index()
+            
+            # Fill missing values with 0
+            merged_df = merged_df.fillna(0)
+            
+            # Sort by date chronologically
+            merged_df['time'] = pd.to_datetime(merged_df['time'])
+            merged_df = merged_df.sort_values('time')
+            merged_df['time'] = merged_df['time'].dt.strftime('%Y-%m-%d')
+            
+            # Handle VNINDEX zeros by using previous non-zero value
+            if 'VNINDEX' in merged_df.columns:
+                merged_df['VNINDEX'] = merged_df['VNINDEX'].replace(0, pd.NA).ffill()
+            
             merged_df.to_csv(merged_file_path, index=False)
         
         # Also save to all symbols history

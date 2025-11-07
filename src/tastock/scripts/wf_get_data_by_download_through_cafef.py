@@ -10,7 +10,7 @@ import sys
 # Add project root to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
-from src.constants import SYMBOLS_VN100, SYMBOLS_VN30, SYMBOLS_DH, SYMBOLS_TH
+from src.constants import SYMBOLS_BIZUNI_NOW, SYMBOLS_VN100, SYMBOLS_VN30, SYMBOLS_DH, SYMBOLS_TH, SYMBOLS_BIZUNI_DH
 from src.tastock.data.data_downloader import DataWorkflowDownload
 
 def main():
@@ -19,10 +19,12 @@ def main():
     
     # Run workflow for all portfolios
     portfolios = [
+        (SYMBOLS_BIZUNI_NOW, 'BizUni_Now'),
         (SYMBOLS_VN100, 'VN100'),
-        (SYMBOLS_VN30, 'VN30'),
-        (SYMBOLS_DH, 'DH'),
-        (SYMBOLS_TH, 'TH')
+        (SYMBOLS_VN30, 'VN30')
+        # (SYMBOLS_DH, 'DH'),
+        #(SYMBOLS_TH, 'TH')
+        # (SYMBOLS_BIZUNI_DH, 'BizUni - Long term')
     ]
     
     for symbols, portfolio_name in portfolios:

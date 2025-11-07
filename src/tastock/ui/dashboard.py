@@ -1233,6 +1233,44 @@ class TAstock_st:
         
         with main_tab:
             TAstock_st._display_investment_summary(signals_df)
+            
+            # Add expander with investment signals table
+            with st.expander("📋 Bảng so sánh tín hiệu đầu tư", expanded=True):
+                def color_final_signal(val):
+                    """Color code the final_signal column"""
+                    if val == 'BUY':
+                        return 'background-color: lightgreen'
+                    elif val == 'SELL':
+                        return 'background-color: lightcoral'
+                    else:
+                        return ''
+                
+                # Apply styling to the final_signal column
+                styled_df = signals_df.style.applymap(
+                    color_final_signal, 
+                    subset=['final_signal']
+                )
+                
+                st.dataframe(
+                    styled_df,
+                    use_container_width=True,
+                    height=600
+                )
+                
+                # Summary statistics
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    buy_count = len(signals_df[signals_df['final_signal'] == 'BUY'])
+                    st.metric("🟢 BUY", buy_count)
+                
+                with col2:
+                    hold_count = len(signals_df[signals_df['final_signal'] == 'HOLD'])
+                    st.metric("🟡 HOLD", hold_count)
+                
+                with col3:
+                    sell_count = len(signals_df[signals_df['final_signal'] == 'SELL'])
+                    st.metric("🔴 SELL", sell_count)
         
         with value_tab:
             TAstock_st._display_value_investing_tab(signals_df)

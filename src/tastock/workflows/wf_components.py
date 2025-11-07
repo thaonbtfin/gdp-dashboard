@@ -34,8 +34,8 @@ class StructuredDataProcessor:
     
     # API processing moved to fetch script - not shared
     
-    def process_from_local_files(self, data_folder: Path, portfolio_name: str = 'VN30', symbols: list = None, period: int = 1251) -> bool:
-        """Process data from local files with structured output"""
+    def process_from_local_files(self, data_folder: Path, portfolio_name: str = 'VN30', symbols: list = None, index_folder: Path = None, period: int = 1251) -> bool:
+        """Process data from local files with structured output, including separate index data"""
         if symbols is None:
             symbols = SYMBOLS_VN30
         
@@ -43,7 +43,7 @@ class StructuredDataProcessor:
             start_date, end_date = Helpers.get_start_end_dates(period)
             print(f"Processing {portfolio_name} data from {start_date} to {end_date}")
             
-            # Load data from local files
+            # Load stock data from local files
             stock_data = self.data_manager.load_data_from_local_files(
                 folder_path=str(data_folder),
                 symbols_filter=symbols,
@@ -52,19 +52,32 @@ class StructuredDataProcessor:
                 period=period
             )
             
-            # Fix VNINDEX symbol name and move to first position
+            # Remove VNAll-INDEX from stock data if present
             if 'VNAll-INDEX' in stock_data:
-                vnindex_data = stock_data.pop('VNAll-INDEX')
-                new_stock_data = {'VNINDEX': vnindex_data}
-                new_stock_data.update(stock_data)
-                stock_data = new_stock_data
-                print("Renamed VNAll-INDEX to VNINDEX and moved to first position")
-            elif 'VNINDEX' in stock_data:
-                vnindex_data = stock_data.pop('VNINDEX')
-                new_stock_data = {'VNINDEX': vnindex_data}
-                new_stock_data.update(stock_data)
-                stock_data = new_stock_data
-                print("Moved VNINDEX to first position")
+                stock_data.pop('VNAll-INDEX')
+                print("Removed VNAll-INDEX from stock data")
+            
+            # Load VNINDEX data from index folder if provided
+            if index_folder and 'VNINDEX' in symbols:
+                try:
+                    vnindex_data = self.data_manager.load_data_from_local_files(
+                        folder_path=str(index_folder),
+                        symbols_filter=['VNINDEX'],
+                        start_date=start_date,
+                        end_date=end_date,
+                        period=period
+                    )
+                    if 'VNINDEX' in vnindex_data:
+                        # Replace any existing VNINDEX with index data
+                        stock_data['VNINDEX'] = vnindex_data['VNINDEX']
+                        # Move VNINDEX to first position
+                        vnindex_df = stock_data.pop('VNINDEX')
+                        new_stock_data = {'VNINDEX': vnindex_df}
+                        new_stock_data.update(stock_data)
+                        stock_data = new_stock_data
+                        print("Replaced VNINDEX with index data")
+                except Exception as e:
+                    print(f"Failed to load VNINDEX from index data: {e}")
             
             if not stock_data:
                 print("No data found")
@@ -129,9 +142,16 @@ class StructuredDataProcessor:
             return False
     
     def _save_portfolio_history(self, stock_data: dict, file_path: Path):
-        """Save portfolio history CSV"""
+        """Save portfolio history CSV with VNINDEX first, then alphabetically sorted"""
+        # Sort symbols: VNINDEX first, then alphabetically
+        sorted_symbols = sorted(stock_data.keys())
+        if 'VNINDEX' in sorted_symbols:
+            sorted_symbols.remove('VNINDEX')
+            sorted_symbols.insert(0, 'VNINDEX')
+        
         dfs = []
-        for symbol, df in stock_data.items():
+        for symbol in sorted_symbols:
+            df = stock_data[symbol]
             if not df.empty and 'time' in df.columns and 'close' in df.columns:
                 temp_df = df[['time', 'close']].copy()
                 temp_df['time'] = temp_df['time'].astype(str)
@@ -141,7 +161,21 @@ class StructuredDataProcessor:
         if dfs:
             merged_df = pd.concat(dfs, axis=1, join='outer').reset_index()
             merged_df = merged_df.rename(columns={'index': 'time'})
-            merged_df = merged_df.fillna(0)
+            
+            # Fill missing values with 0 for all columns except time
+            for col in merged_df.columns:
+                if col != 'time':
+                    merged_df[col] = merged_df[col].fillna(0)
+            
+            # Sort by date chronologically
+            merged_df['time'] = pd.to_datetime(merged_df['time'])
+            merged_df = merged_df.sort_values('time')
+            merged_df['time'] = merged_df['time'].dt.strftime('%Y-%m-%d')
+            
+            # Handle VNINDEX zeros by using previous non-zero value
+            if 'VNINDEX' in merged_df.columns:
+                merged_df['VNINDEX'] = merged_df['VNINDEX'].replace(0, pd.NA).ffill()
+            
             merged_df.to_csv(file_path, index=False)
     
     def _save_performance_metrics(self, performance_metrics: dict, file_path: Path):
