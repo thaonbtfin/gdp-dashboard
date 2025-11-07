@@ -1,3 +1,8 @@
 streamlit
 pandas
 vnstock
+xgboost
+scikit-learn
+plotly
+requests
+numpy

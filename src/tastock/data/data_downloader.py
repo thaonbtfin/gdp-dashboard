@@ -15,11 +15,13 @@ from urllib.parse import urlparse
 from email.message import Message
 
 from ..workflows.wf_components import StructuredDataProcessor, FileCopier, DataFileManager
+from src.constants import DEFAULT_OUTPUT_DIR
 
 class DataDownloader:
     """Handles downloading and extracting CafeF data"""
     
-    CAFEF_URL_TEMPLATE = "https://cafef1.mediacdn.vn/data/ami_data/{date_yyyymmdd}/CafeF.SolieuGD.Upto{date_ddmmyyyy}.zip"
+    CAFEF_STOCK_URL_TEMPLATE = "https://cafef1.mediacdn.vn/data/ami_data/{date_yyyymmdd}/CafeF.SolieuGD.Upto{date_ddmmyyyy}.zip"
+    CAFEF_INDEX_URL_TEMPLATE = "https://cafef1.mediacdn.vn/data/ami_data/{date_yyyymmdd}/CafeF.Index.Upto{date_ddmmyyyy}.zip"
     DEFAULT_CHUNK_SIZE = 8192
     
     def __init__(self, download_dir: str):
@@ -61,58 +63,154 @@ class DataDownloader:
         filename_from_url = Path(parsed_url.path).name
         return filename_from_url if filename_from_url else "downloaded_file"
     
-    def download_and_extract(self, target_date: Optional[date] = None) -> Tuple[bool, Optional[Path]]:
-        """Download and extract CafeF data, skip if already exists"""
+    def download_and_extract_index(self, target_date: Optional[date] = None, max_retries: int = 5) -> Tuple[bool, Optional[Path]]:
+        """Download and extract CafeF index data with retry logic"""
         effective_date = self._get_effective_date(target_date)
         
-        date_yyyymmdd = effective_date.strftime("%Y%m%d")
-        date_ddmmyyyy = effective_date.strftime("%d%m%Y")
+        for attempt in range(max_retries):
+            try_date = effective_date - timedelta(days=attempt)
+            
+            # Skip weekends
+            while try_date.weekday() >= 5:
+                try_date -= timedelta(days=1)
+            
+            date_yyyymmdd = try_date.strftime("%Y%m%d")
+            date_ddmmyyyy = try_date.strftime("%d%m%Y")
+            
+            print(f"Index download attempt {attempt + 1}: Trying date {try_date.strftime('%Y-%m-%d')}")
+            
+            # Check if index data is already extracted
+            expected_extract_dir = self.download_dir / f"CafeF.Index.Upto{date_ddmmyyyy}"
+            if self._is_index_data_available(expected_extract_dir):
+                print(f"Index data already available at: {expected_extract_dir}")
+                return True, expected_extract_dir
+            
+            # Check if index zip file already exists
+            expected_zip_file = self.download_dir / f"CafeF.Index.Upto{date_ddmmyyyy}.zip"
+            if expected_zip_file.exists():
+                print(f"Index zip file already exists: {expected_zip_file}")
+                success, extract_dir = self._extract_existing_zip(expected_zip_file, expected_extract_dir)
+                if success:
+                    return success, extract_dir
+            
+            # Try to download index data
+            url = self.CAFEF_INDEX_URL_TEMPLATE.format(
+                date_yyyymmdd=date_yyyymmdd,
+                date_ddmmyyyy=date_ddmmyyyy
+            )
+            
+            try:
+                print(f"Downloading index data from: {url}")
+                response = requests.get(url, stream=True, timeout=30)
+                response.raise_for_status()
+                
+                filename = self._get_filename_from_response(response, url)
+                downloaded_file = self.download_dir / filename
+                
+                with open(downloaded_file, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=self.DEFAULT_CHUNK_SIZE):
+                        f.write(chunk)
+                
+                print(f"Downloaded index data: {downloaded_file}")
+                
+                # Extract if zip file
+                if filename.lower().endswith('.zip'):
+                    extract_dir = self.download_dir / Path(filename).stem
+                    success, extract_dir = self._extract_existing_zip(downloaded_file, extract_dir)
+                    if success:
+                        return success, extract_dir
+                
+                return True, None
+                
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    print(f"Index data not available for {try_date.strftime('%Y-%m-%d')}, trying previous date...")
+                    continue
+                else:
+                    print(f"HTTP error {e.response.status_code}: {e}")
+                    continue
+            except Exception as e:
+                print(f"Index download failed for {try_date.strftime('%Y-%m-%d')}: {e}")
+                continue
         
-        # Check if data is already extracted
-        expected_extract_dir = self.download_dir / f"CafeF.SolieuGD.Upto{date_ddmmyyyy}"
-        if self._is_data_already_available(expected_extract_dir):
-            print(f"Data already available at: {expected_extract_dir}")
-            return True, expected_extract_dir
+        print(f"Failed to download index data after {max_retries} attempts")
+        return False, None
+    
+    def download_and_extract(self, target_date: Optional[date] = None, max_retries: int = 5) -> Tuple[bool, Optional[Path]]:
+        """Download and extract CafeF data with retry logic for unavailable dates"""
+        effective_date = self._get_effective_date(target_date)
         
-        # Check if zip file already exists
-        expected_zip_file = self.download_dir / f"CafeF.SolieuGD.Upto{date_ddmmyyyy}.zip"
-        if expected_zip_file.exists():
-            print(f"Zip file already exists: {expected_zip_file}")
-            return self._extract_existing_zip(expected_zip_file, expected_extract_dir)
+        for attempt in range(max_retries):
+            try_date = effective_date - timedelta(days=attempt)
+            
+            # Skip weekends
+            while try_date.weekday() >= 5:
+                try_date -= timedelta(days=1)
+            
+            date_yyyymmdd = try_date.strftime("%Y%m%d")
+            date_ddmmyyyy = try_date.strftime("%d%m%Y")
+            
+            print(f"Attempt {attempt + 1}: Trying date {try_date.strftime('%Y-%m-%d')}")
+            
+            # Check if data is already extracted
+            expected_extract_dir = self.download_dir / f"CafeF.SolieuGD.Upto{date_ddmmyyyy}"
+            if self._is_data_already_available(expected_extract_dir):
+                print(f"Data already available at: {expected_extract_dir}")
+                return True, expected_extract_dir
+            
+            # Check if zip file already exists
+            expected_zip_file = self.download_dir / f"CafeF.SolieuGD.Upto{date_ddmmyyyy}.zip"
+            if expected_zip_file.exists():
+                print(f"Zip file already exists: {expected_zip_file}")
+                success, extract_dir = self._extract_existing_zip(expected_zip_file, expected_extract_dir)
+                if success:
+                    return success, extract_dir
+            
+            # Try to download stock data
+            url = self.CAFEF_STOCK_URL_TEMPLATE.format(
+                date_yyyymmdd=date_yyyymmdd,
+                date_ddmmyyyy=date_ddmmyyyy
+            )
+            
+            try:
+                print(f"Downloading from: {url}")
+                response = requests.get(url, stream=True, timeout=30)
+                response.raise_for_status()
+                
+                filename = self._get_filename_from_response(response, url)
+                downloaded_file = self.download_dir / filename
+                
+                with open(downloaded_file, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=self.DEFAULT_CHUNK_SIZE):
+                        f.write(chunk)
+                
+                print(f"Downloaded: {downloaded_file}")
+                
+                # Extract if zip file
+                if filename.lower().endswith('.zip'):
+                    extract_dir = self.download_dir / Path(filename).stem
+                    success, extract_dir = self._extract_existing_zip(downloaded_file, extract_dir)
+                    if success:
+                        return success, extract_dir
+                
+                return True, None
+                
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 404:
+                    print(f"Data not available for {try_date.strftime('%Y-%m-%d')}, trying previous date...")
+                    continue
+                else:
+                    print(f"HTTP error {e.response.status_code}: {e}")
+                    continue
+            except Exception as e:
+                print(f"Download failed for {try_date.strftime('%Y-%m-%d')}: {e}")
+                continue
         
-        # Download if not exists
-        url = self.CAFEF_URL_TEMPLATE.format(
-            date_yyyymmdd=date_yyyymmdd,
-            date_ddmmyyyy=date_ddmmyyyy
-        )
-        
-        try:
-            print(f"Downloading from: {url}")
-            response = requests.get(url, stream=True, timeout=30)
-            response.raise_for_status()
-            
-            filename = self._get_filename_from_response(response, url)
-            downloaded_file = self.download_dir / filename
-            
-            with open(downloaded_file, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=self.DEFAULT_CHUNK_SIZE):
-                    f.write(chunk)
-            
-            print(f"Downloaded: {downloaded_file}")
-            
-            # Extract if zip file
-            if filename.lower().endswith('.zip'):
-                extract_dir = self.download_dir / Path(filename).stem
-                return self._extract_existing_zip(downloaded_file, extract_dir)
-            
-            return True, None
-            
-        except Exception as e:
-            print(f"Download failed: {e}")
-            return False, None
+        print(f"Failed to download data after {max_retries} attempts")
+        return False, None
     
     def _is_data_already_available(self, extract_dir: Path) -> bool:
-        """Check if extracted data is already available and valid"""
+        """Check if extracted stock data is already available and valid"""
         if not extract_dir.exists():
             return False
         
@@ -120,6 +218,19 @@ class DataDownloader:
         csv_files = list(extract_dir.glob("*.csv"))
         if len(csv_files) >= 3:  # Expect at least HSX, HNX, UPCOM files
             print(f"Found {len(csv_files)} CSV files in {extract_dir}")
+            return True
+        
+        return False
+    
+    def _is_index_data_available(self, extract_dir: Path) -> bool:
+        """Check if extracted index data is already available and valid"""
+        if not extract_dir.exists():
+            return False
+        
+        # Check if directory contains index CSV files
+        csv_files = list(extract_dir.glob("*.csv"))
+        if len(csv_files) >= 1:  # Expect at least one index file
+            print(f"Found {len(csv_files)} index CSV files in {extract_dir}")
             return True
         
         return False
@@ -142,11 +253,14 @@ class DataDownloader:
 class DataWorkflowDownload:
     """Main workflow orchestrator for download-based data processing"""
     
-    def __init__(self, download_dir: str = None, data_dir: str = 'data'):
+    def __init__(self, download_dir: str = None, data_dir: str = None):
         if download_dir is None:
             from pathlib import Path
             script_dir = Path(__file__).resolve().parent.parent / "scripts"
             download_dir = str(script_dir / ".temp")
+        
+        if data_dir is None:
+            data_dir = DEFAULT_OUTPUT_DIR
         
         self.downloader = DataDownloader(download_dir)
         self.processor = StructuredDataProcessor(data_dir)
@@ -156,22 +270,29 @@ class DataWorkflowDownload:
         """Run the complete workflow"""
         print(f"=== Starting Data Workflow for {portfolio_name} ===")
         
-        # Step 1: Download data
-        print("\n1. Downloading CafeF data...")
-        success, extract_dir = self.downloader.download_and_extract(target_date)
-        if not success or not extract_dir:
-            print("Download failed")
+        # Step 1: Download stock data
+        print("\n1. Downloading CafeF stock data...")
+        success, stock_extract_dir = self.downloader.download_and_extract(target_date)
+        if not success or not stock_extract_dir:
+            print("Stock data download failed")
             return False
         
-        # Step 2: Process data with portfolio structure
-        print(f"\n2. Processing portfolio data for {portfolio_name}...")
-        success = self.processor.process_from_local_files(extract_dir, portfolio_name, symbols)
+        # Step 2: Download index data
+        print("\n2. Downloading CafeF index data...")
+        success, index_extract_dir = self.downloader.download_and_extract_index(target_date)
+        if not success or not index_extract_dir:
+            print("Index data download failed")
+            return False
+        
+        # Step 3: Process data with portfolio structure
+        print(f"\n3. Processing portfolio data for {portfolio_name}...")
+        success = self.processor.process_from_local_files(stock_extract_dir, portfolio_name, symbols, index_extract_dir)
         if not success:
             print("Data processing failed")
             return False
         
-        # Step 3: Copy latest files
-        print("\n3. Copying latest files to root...")
+        # Step 4: Copy latest files
+        print("\n4. Copying latest files to root...")
         success = self.copier.copy_latest_files()
         if not success:
             print("File copying failed")
@@ -242,10 +363,32 @@ class DataWorkflowDownload:
                 print("No valid data found to merge")
                 return False
             
-            # Create merged DataFrame
+            # Create merged DataFrame with sorted columns
             merged_df = pd.DataFrame(all_symbols_data)
-            merged_df = merged_df.fillna(0)
             merged_df = merged_df.reset_index()
+            
+            # Fill missing values with 0
+            merged_df = merged_df.fillna(0)
+            
+            # Sort by date chronologically
+            merged_df['time'] = pd.to_datetime(merged_df['time'])
+            merged_df = merged_df.sort_values('time')
+            merged_df['time'] = merged_df['time'].dt.strftime('%Y-%m-%d')
+            
+            # Handle VNINDEX zeros by using previous non-zero value
+            if 'VNINDEX' in merged_df.columns:
+                merged_df['VNINDEX'] = merged_df['VNINDEX'].replace(0, pd.NA).ffill()
+            
+            # Sort columns: VNINDEX first, then alphabetically
+            cols = list(merged_df.columns)
+            if 'time' in cols:
+                cols.remove('time')
+            if 'VNINDEX' in cols:
+                cols.remove('VNINDEX')
+                cols = ['time', 'VNINDEX'] + sorted(cols)
+            else:
+                cols = ['time'] + sorted(cols)
+            merged_df = merged_df[cols]
             
             # Save to root
             root_file = base_dir / 'history_data_all_symbols.csv'
@@ -321,36 +464,3 @@ class DataWorkflowDownload:
         """Remove old date folders, keeping only the latest ones"""
         return DataFileManager.cleanup_old_date_folders(str(self.processor.base_output_dir), keep_count)
     
-    def _fix_vnindex_symbol(self, stock_data: dict) -> dict:
-        """Rename VNAll-INDEX to VNINDEX in stock data"""
-        if 'VNAll-INDEX' in stock_data:
-            stock_data['VNINDEX'] = stock_data.pop('VNAll-INDEX')
-            print("Renamed VNAll-INDEX to VNINDEX")
-        return stock_data
-    
-    def _add_vnindex_data(self, stock_data: dict, start_date: str, end_date: str) -> dict:
-        """Add VNINDEX data to existing stock data"""
-        try:
-            from vnstock import Vnstock
-            print("Fetching VNINDEX data...")
-            
-            # Fetch VNINDEX data
-            vnstock_obj = Vnstock().stock(symbol='VNINDEX', source='VCI')
-            vnindex_data = vnstock_obj.quote.history(start=start_date, end=end_date)
-            
-            if not vnindex_data.empty:
-                # Rename columns to match expected format
-                if 'time' not in vnindex_data.columns and vnindex_data.index.name:
-                    vnindex_data = vnindex_data.reset_index()
-                    vnindex_data = vnindex_data.rename(columns={vnindex_data.columns[0]: 'time'})
-                
-                # Add VNINDEX to stock_data
-                stock_data['VNINDEX'] = vnindex_data
-                print(f"Added VNINDEX data: {len(vnindex_data)} records")
-            else:
-                print("No VNINDEX data available")
-                
-        except Exception as e:
-            print(f"Failed to fetch VNINDEX data: {e}")
-            
-        return stock_data

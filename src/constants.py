@@ -13,8 +13,8 @@ GIST_URL_TH_HISTORY="https://gist.githubusercontent.com/thaonbtfin/702773bb825af
 GIST_URL_DH_HISTORY="https://gist.githubusercontent.com/thaonbtfin/4c3a7018a1058d5f1e31fcf91d2367a9/raw/6205af6e9522710c4e88c80cbe234c1592fa5d05/DH_toGoogleSheet.csv"
 
 # location
-TEMP_DIR = '.temp/'
-DEFAULT_OUTPUT_DIR = TEMP_DIR
+TEMP_DIR = os.path.join(PROJECT_DIR, '.temp')
+DEFAULT_OUTPUT_DIR = os.path.join(PROJECT_DIR, 'data')
 DEFAULT_USE_SUB_DIR = True
 
 # Default values for fetching stock data
@@ -31,6 +31,25 @@ DEFAULT_INFLATION_RATE_PERCENTAGE = 3.5  # Default inflation rate in percentage
 # Portfolio
 # Sample
 SYMBOLS = ['ACB', 'FPT']
+
+# BizUni
+SYMBOLS_BIZUNI_NOW = [
+    'VNINDEX',
+    'ACB', 'AST', 'BCM', 'BID', 'BMP', 'BWE', 'CMG', 'CTG', 'CTR', 'DBD', 
+    'DGC', 'DGW', 'DPG', 'FMC', 'FPT', 'FRT', 'GMD', 'HAX', 'HCM', 'HDB', 
+    'HDG', 'HPG', 'HVN', 'IDC', 'IJC', 'LHG', 'MBB', 'MSH', 'MSN', 'MWG', 
+    'NTP', 'PNJ', 'PTB', 'PVS', 'QNS', 'QTP', 'REE', 'SIP', 'SSI', 'TCB', 
+    'TCM', 'TLG', 'TNG', 'TPB', 'VCB', 'VGC', 'VHC', 'VIB'
+]
+
+# BizUni - Long term
+SYMBOLS_BIZUNI_DH = [
+    'VNINDEX',
+    'ACB', 'DGC', 'DGW', 'DHC', 'FMC', 'FPT', 'FRT', 'GIL', 'HDG', 'HPG', 
+    'IDC', 'IDV', 'IJC', 'MBB', 'MWG', 'NTL', 'PDR', 'PNJ', 'PTB', 'PHR', 
+    'QNS', 'REE', 'SSI', 'TCB', 'THG', 'TNG', 'TPB', 'CTR', 'TVS', 'VCB', 
+    'VCI', 'BVB', 'VND', 'VPB'
+]
 
 # Dai han
 SYMBOLS_DH = [
