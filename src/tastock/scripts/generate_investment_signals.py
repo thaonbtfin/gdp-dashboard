@@ -301,7 +301,7 @@ def main():
     project_root = os.path.join(script_dir, '../../..')
     
     # Read existing performance data
-    perf_file = os.path.join(project_root, '.temp/20250626/perf_all_symbols_20250626.csv')
+    perf_file = os.path.join(project_root, 'data/perf_all_symbols.csv')
     
     if not os.path.exists(perf_file):
         print(f"❌ File not found: {perf_file}")
