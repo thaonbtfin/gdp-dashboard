@@ -35,6 +35,13 @@ SYMBOLS = ['ACB', 'FPT']
 # BizUni
 SYMBOLS_BIZUNI_NOW = [
     'VNINDEX',
+    'ACB', 'BID', 'BMP', 'BWE', 'CMG', 'CTG', 'CTR', 'DBD', 'DGC', 'DGW', 
+    'DPG', 'FPT', 'FRT', 'GMD', 'HDG', 'HPG', 'IJC', 'MBB', 'MWG', 'PNJ', 
+    'PTB', 'QNS', 'REE', 'SIP', 'SSI', 'TCB', 'TLG', 'TPB', 'VCB', 'VGC', 
+    'VHC', 'VIB'
+]
+SYMBOLS_BIZUNI_OLD = [
+    'VNINDEX',
     'ACB', 'AST', 'BCM', 'BID', 'BMP', 'BWE', 'CMG', 'CTG', 'CTR', 'DBD', 
     'DGC', 'DGW', 'DPG', 'FMC', 'FPT', 'FRT', 'GMD', 'HAX', 'HCM', 'HDB', 
     'HDG', 'HPG', 'HVN', 'IDC', 'IJC', 'LHG', 'MBB', 'MSH', 'MSN', 'MWG', 
@@ -45,10 +52,10 @@ SYMBOLS_BIZUNI_NOW = [
 # BizUni - Long term
 SYMBOLS_BIZUNI_DH = [
     'VNINDEX',
-    'ACB', 'DGC', 'DGW', 'DHC', 'FMC', 'FPT', 'FRT', 'GIL', 'HDG', 'HPG', 
-    'IDC', 'IDV', 'IJC', 'MBB', 'MWG', 'NTL', 'PDR', 'PNJ', 'PTB', 'PHR', 
-    'QNS', 'REE', 'SSI', 'TCB', 'THG', 'TNG', 'TPB', 'CTR', 'TVS', 'VCB', 
-    'VCI', 'BVB', 'VND', 'VPB'
+    'ACB', 'BID', 'BMP', 'BWE', 'CMG', 'CTG', 'CTR', 'DBD', 'DGC', 'DGW', 
+    'DPG', 'FPT', 'FRT', 'GMD', 'HDG', 'HPG', 'IJC', 'MBB', 'MWG', 'PNJ', 
+    'PTB', 'QNS', 'REE', 'SIP', 'SSI', 'TCB', 'TLG', 'TPB', 'VCB', 'VGC', 
+    'VHC', 'VIB'
 ]
 
 # Dai han
