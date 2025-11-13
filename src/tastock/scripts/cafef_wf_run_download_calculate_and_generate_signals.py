@@ -24,16 +24,7 @@ def run_script(script_path, script_name):
     try:
         # Run the script
         result = subprocess.run([sys.executable, script_path], 
-                              capture_output=True, 
-                              text=True, 
                               cwd=os.path.dirname(script_path))
-        
-        # Print output
-        if result.stdout:
-            print(result.stdout)
-        
-        if result.stderr:
-            print("STDERR:", result.stderr)
         
         if result.returncode == 0:
             print(f"✅ {script_name} completed successfully")
@@ -61,7 +52,7 @@ def main():
     
     # Define scripts to run in sequence
     scripts = [
-        (os.path.join(scripts_dir, 'wf_get_data_by_download_through_cafef.py'), 
+        (os.path.join(scripts_dir, 'cafef_crawl_data_and_save_portfolios_to_root_folder.py'), 
          "1. Data Download (CafeF)"),
         (os.path.join(scripts_dir, 'wf_calculate_from_history.py'), 
          "2. Calculate Metrics"),
