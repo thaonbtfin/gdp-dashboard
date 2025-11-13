@@ -93,12 +93,12 @@ def main():
     duration = end_time - start_time
     
     print(f"\n{'='*60}")
-    print(f"📊 WORKFLOW SUMMARY")
+    print("📊 WORKFLOW SUMMARY")
     print(f"{'='*60}")
     print(f"Started: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Ended: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Duration: {duration}")
-    print(f"\nResults:")
+    print("\nResults:")
     
     all_success = True
     for script_name, success in results:
@@ -108,14 +108,14 @@ def main():
             all_success = False
     
     if all_success:
-        print(f"\n🎉 ALL WORKFLOWS COMPLETED SUCCESSFULLY!")
-        print(f"📁 Check the 'data' folder for results:")
-        print(f"   - history_data_all_symbols.csv")
-        print(f"   - perf_all_symbols.csv") 
-        print(f"   - investment_signals_complete.csv")
+        print("\n🎉 ALL WORKFLOWS COMPLETED SUCCESSFULLY!")
+        print("📁 Check the 'data' folder for results:")
+        print("   - history_data_all_symbols.csv")
+        print("   - perf_all_symbols.csv") 
+        print("   - investment_signals_complete.csv")
     else:
-        print(f"\n⚠️  WORKFLOW COMPLETED WITH ERRORS")
-        print(f"Please check the error messages above and fix issues before retrying.")
+        print("\n⚠️  WORKFLOW COMPLETED WITH ERRORS")
+        print("Please check the error messages above and fix issues before retrying.")
     
     return all_success
 
