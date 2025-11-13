@@ -13,6 +13,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 import random
+import sys
 
 class BizUniCrawler:
     def __init__(self):
@@ -55,13 +56,12 @@ class BizUniCrawler:
         delay = random.uniform(min_s, max_s)
         await asyncio.sleep(delay)
     
-    async def _validate_environment(self):
+    def _validate_environment(self):
         """Validate OS and user environment"""
         if platform.system() != "Darwin":
-            raise Exception("❌ Incorrect running environment: OS must be macOS")
+            raise OSError("❌ Incorrect running environment: OS must be macOS")
         
         self.current_user = getpass.getuser()
-        full_name = os.environ.get('USER', self.current_user)
         
         if "thao" in self.current_user.lower():
             self.credentials = {
@@ -74,7 +74,7 @@ class BizUniCrawler:
                 'password': '[need to fulfill]'
             }
         else:
-            raise Exception(f"❌ Incorrect running environment: Unknown user '{self.current_user}'")
+            raise ValueError(f"❌ Incorrect running environment: Unknown user '{self.current_user}'")
         
         self._get_session_file()
         print(f"✅ Environment validated for user: {self.current_user}")
@@ -86,12 +86,12 @@ class BizUniCrawler:
         temp_page = None
         
         try:
-            await self._validate_environment()
+            self._validate_environment()
             
             # Check if session already exists
             if self.session_file.exists():
                 print(f"ℹ️  Session file already exists at: {self.session_file}")
-                response = input("Do you want to create a new session? (yes/no): ").strip().lower()
+                response = (await asyncio.to_thread(input, "Do you want to create a new session? (yes/no): ")).strip().lower()
                 if response not in ['yes', 'y']:
                     print("✅ Keeping existing session.")
                     return
@@ -107,7 +107,7 @@ class BizUniCrawler:
             
             print("⚙️ Please log in manually in the browser window.")
             print("✅ Once you're fully logged in, press Enter here.")
-            input("Press Enter when ready...")
+            await asyncio.to_thread(input, "Press Enter when ready...")
             
             # Save cookies and local storage
             await temp_context.storage_state(path=str(self.session_file))
@@ -136,9 +136,26 @@ class BizUniCrawler:
             try:
                 if await self.page.locator(indicator).is_visible(timeout=2000):
                     return True
-            except:
+            except Exception:
                 pass
         return False
+    
+    async def _save_captcha_debug_artifacts(self):
+        """Save debug artifacts when CAPTCHA is detected but no display is available"""
+        debug_dir = Path(__file__).parent / ".sessions" / "debug_captcha"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        screenshot_path = debug_dir / f"captcha_{timestamp}.png"
+        html_path = debug_dir / f"captcha_{timestamp}.html"
+        try:
+            if self.page:
+                await self.page.screenshot(path=str(screenshot_path), full_page=True)
+                html = await self.page.content()
+                await asyncio.to_thread(lambda: html_path.write_text(html, encoding="utf-8"))
+            print(f"ℹ️ CAPTCHA detected but no display available. Saved screenshots/html to: {debug_dir}")
+            print("ℹ️ To resolve: run the script locally (with GUI) or open the saved HTML/screenshot and complete the CAPTCHA manually in a browser session.")
+        except Exception as e:
+            print(f"⚠️ Failed to save debug artifacts: {e}")
     
     async def _handle_captcha(self):
         """Handle CAPTCHA by switching to headed mode"""
@@ -157,23 +174,8 @@ class BizUniCrawler:
             return sys.stdout.isatty()
 
         if not _can_show_browser():
-            # save debug artifacts and raise informative error
-            debug_dir = Path(__file__).parent / ".sessions" / "debug_captcha"
-            debug_dir.mkdir(parents=True, exist_ok=True)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            screenshot_path = debug_dir / f"captcha_{timestamp}.png"
-            html_path = debug_dir / f"captcha_{timestamp}.html"
-            try:
-                if self.page:
-                    await self.page.screenshot(path=str(screenshot_path), full_page=True)
-                    html = await self.page.content()
-                    with open(html_path, "w", encoding="utf-8") as f:
-                        f.write(html)
-                print(f"ℹ️ CAPTCHA detected but no display available. Saved screenshots/html to: {debug_dir}")
-                print("ℹ️ To resolve: run the script locally (with GUI) or open the saved HTML/screenshot and complete the CAPTCHA manually in a browser session.")
-            except Exception as e:
-                print(f"⚠️ Failed to save debug artifacts: {e}")
-            raise Exception("CAPTCHA detected and no display available to solve it automatically.")
+            await self._save_captcha_debug_artifacts()
+            raise RuntimeError("CAPTCHA detected and no display available to solve it automatically.")
 
         # Close current headless browser
         if self.page and not self.page.is_closed():
@@ -195,7 +197,7 @@ class BizUniCrawler:
     async def crawl_stock_data(self):
         """Main method to crawl stock data from BizUni"""
         try:
-            await self._validate_environment()
+            self._validate_environment()
             
             # Check if session exists
             if not self._session_exists():
@@ -204,7 +206,7 @@ class BizUniCrawler:
                 await self.login_and_save_session()
                 
                 if not self._session_exists():
-                    raise Exception("❌ Session creation failed. Please try again.")
+                    raise RuntimeError("❌ Session creation failed. Please try again.")
                 print("✅ Session created successfully. Proceeding with data crawl...\n")
             
             print("\n=== 🚀 Starting data fetch... ===")
@@ -277,7 +279,7 @@ class BizUniCrawler:
             ''')
             
             if not headers or not rows_data:
-                raise Exception("❌ Could not extract table data. Table might be empty or structure changed.")
+                raise ValueError("❌ Could not extract table data. Table might be empty or structure changed.")
             
             # Create DataFrame
             df = pd.DataFrame(rows_data, columns=headers)
@@ -336,6 +338,39 @@ class BizUniCrawler:
         except Exception as e:
             print(f"⚠️ Error copying to root: {e}")
     
+    async def _cleanup_page(self):
+        """Clean up page resource"""
+        if self.page:
+            try:
+                if not self.page.is_closed():
+                    await self.page.close()
+            except Exception:
+                pass
+    
+    async def _cleanup_context(self):
+        """Clean up context resource"""
+        if self.context:
+            try:
+                await self.context.close()
+            except Exception:
+                pass
+    
+    async def _cleanup_browser(self):
+        """Clean up browser resource"""
+        if self.browser:
+            try:
+                await self.browser.close()
+            except Exception:
+                pass
+    
+    async def _cleanup_playwright(self):
+        """Clean up playwright resource"""
+        if self.playwright:
+            try:
+                await self.playwright.stop()
+            except Exception:
+                pass
+    
     async def _cleanup(self):
         """Clean up browser resources (idempotent)"""
         if self._cleaned:
@@ -343,33 +378,11 @@ class BizUniCrawler:
         self._cleaned = True
 
         try:
-            if self.page:
-                try:
-                    if not self.page.is_closed():
-                        await self.page.close()
-                except Exception:
-                    pass
-
-            if self.context:
-                try:
-                    await self.context.close()
-                except Exception:
-                    pass
-
-            if self.browser:
-                try:
-                    await self.browser.close()
-                except Exception:
-                    pass
-
-            if self.playwright:
-                try:
-                    await self.playwright.stop()
-                except Exception:
-                    pass
-                
+            await self._cleanup_page()
+            await self._cleanup_context()
+            await self._cleanup_browser()
+            await self._cleanup_playwright()
             print("\n🏁 Cleanup completed")
-            
         except Exception as e:
             print(f"\n⚠️ Error during cleanup: {e}")
 
@@ -388,48 +401,44 @@ async def crawl_bizuni_data():
 async def reset_session():
     """Reset session for current user"""
     async with BizUniCrawler() as crawler:
-        await crawler._validate_environment()
+        crawler._validate_environment()
         if crawler.session_file.exists():
             crawler.session_file.unlink()
             print(f"✅ Session deleted: {crawler.session_file}")
         else:
             print(f"ℹ️  No session found for user '{crawler.current_user}'")
 
-if __name__ == "__main__":
+def main():
+    """Main function to handle command line arguments"""
     import sys
     
-    if len(sys.argv) > 1:
-        command = sys.argv[1].lower()
-        
-        if command == "login":
-            print("\n🔐 Starting login process...")
-            try:
-                asyncio.run(login_bizuni())
-            except Exception as e:
-                print(f"❌ Login failed: {e}")
-        
-        elif command == "reset":
-            print("\n🔄 Resetting session...")
-            try:
-                asyncio.run(reset_session())
-            except Exception as e:
-                print(f"❌ Reset failed: {e}")
-        
-        elif command == "crawl":
-            print("\n=== 📥 Starting data crawl... ===")
-            try:
-                filename = asyncio.run(crawl_bizuni_data())
-                print(f"\n=> ✅ Successfully crawled data to: {filename}")
-            except Exception as e:
-                print(f"\n=> ❌ Crawling failed: {e}")
-        
-        else:
-            print(f"\n=== ❌ Unknown command: {command} ===")
-            print("Available commands: login, crawl, reset")
-    else:
+    command = sys.argv[1].lower() if len(sys.argv) > 1 else "crawl"
+    
+    if command == "login":
+        print("\n🔐 Starting login process...")
+        try:
+            asyncio.run(login_bizuni())
+        except Exception as e:
+            print(f"❌ Login failed: {e}")
+    
+    elif command == "reset":
+        print("\n🔄 Resetting session...")
+        try:
+            asyncio.run(reset_session())
+        except Exception as e:
+            print(f"❌ Reset failed: {e}")
+    
+    elif command == "crawl":
         print("\n=== 📥 Starting data crawl... ===")
         try:
             filename = asyncio.run(crawl_bizuni_data())
             print(f"\n=> ✅ Successfully crawled data to: {filename}")
         except Exception as e:
-            print(f"❌\n=> Crawling failed: {e}")
+            print(f"\n=> ❌ Crawling failed: {e}")
+    
+    else:
+        print(f"\n=== ❌ Unknown command: {command} ===")
+        print("Available commands: login, crawl, reset")
+
+if __name__ == "__main__":
+    main()
