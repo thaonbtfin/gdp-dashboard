@@ -9,6 +9,7 @@ This module provides reusable components for data workflows including:
 """
 
 import os
+import sys
 import shutil
 import pandas as pd
 from datetime import datetime, timedelta, date
@@ -19,8 +20,12 @@ import zipfile
 from urllib.parse import urlparse
 from email.message import Message
 
-from ..data.data_manager import DataManager
-from ..utils.helpers import Helpers
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from src.tastock.data.data_manager import DataManager
+from src.tastock.utils.helpers import Helpers
 from src.constants import SYMBOLS_VN30
 
 # DataDownloader moved back to download script - not shared
