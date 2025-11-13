@@ -282,19 +282,25 @@ class BizUniCrawler:
             # Create DataFrame
             df = pd.DataFrame(rows_data, columns=headers)
             
-            # Generate filename
+            # Generate filename and date folder
             now = datetime.now()
-            date_str = now.strftime("%d%m%Y")
+            date_folder = now.strftime("%Y%m%d")
             time_str = now.strftime("%H%M%S")
-            filename = f"bizuni_cpgt_{date_str}_{time_str}.csv"
+            filename = f"bizuni_cpgt_{now.strftime('%d%m%Y')}_{time_str}.csv"
             
-            # Ensure data directory exists
-            data_dir = Path(__file__).parent.parent.parent.parent / "data"
-            data_dir.mkdir(exist_ok=True)
+            # Create date-based folder structure
+            data_dir = Path(__file__).parent.parent.parent.parent / "data" / date_folder / "BizUni_CPGT"
+            data_dir.mkdir(parents=True, exist_ok=True)
             
             # Save to CSV
             filepath = data_dir / filename
             df.to_csv(filepath, index=False, encoding='utf-8-sig')
+            
+            # Keep only 3 latest bizuni files
+            self._cleanup_old_files(data_dir)
+            
+            # Copy latest file to root data folder
+            self._copy_to_root(filepath)
             
             print(f"📊 Data will be saved to: {filepath}")
             print(f"📈 Total records: {len(df)}")
@@ -304,6 +310,31 @@ class BizUniCrawler:
         except Exception as e:
             print(f"❌ Error extracting data: {e}")
             raise
+    
+    def _cleanup_old_files(self, data_dir: Path):
+        """Keep only 3 latest bizuni files in the directory"""
+        try:
+            bizuni_files = list(data_dir.glob("bizuni_*.csv"))
+            if len(bizuni_files) > 3:
+                bizuni_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+                for old_file in bizuni_files[3:]:
+                    old_file.unlink()
+                    print(f"🗑️ Removed old file: {old_file.name}")
+        except Exception as e:
+            print(f"⚠️ Error cleaning up old files: {e}")
+    
+    def _copy_to_root(self, source_file: Path):
+        """Copy latest file to project root data folder as bizuni_cpgt.csv"""
+        try:
+            import shutil
+            root_data_dir = Path(__file__).parent.parent.parent.parent / "data"
+            root_data_dir.mkdir(exist_ok=True)
+            
+            target_file = root_data_dir / "bizuni_cpgt.csv"
+            shutil.copy2(source_file, target_file)
+            print(f"📋 Copied to root: {target_file}")
+        except Exception as e:
+            print(f"⚠️ Error copying to root: {e}")
     
     async def _cleanup(self):
         """Clean up browser resources (idempotent)"""
