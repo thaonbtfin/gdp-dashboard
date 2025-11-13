@@ -22,9 +22,6 @@ def main():
         (SYMBOLS_BIZUNI_NOW, 'BizUni_Now'),
         (SYMBOLS_VN100, 'VN100'),
         (SYMBOLS_VN30, 'VN30')
-        # (SYMBOLS_DH, 'DH'),
-        #(SYMBOLS_TH, 'TH')
-        # (SYMBOLS_BIZUNI_DH, 'BizUni - Long term')
     ]
     
     for symbols, portfolio_name in portfolios:
