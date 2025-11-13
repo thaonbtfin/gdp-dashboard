@@ -320,7 +320,8 @@ class DataStorage:
             'history': "history_data_all_symbols.csv",
             'perf': "perf_all_symbols.csv",
             'intrinsic': "intrinsic_value_all_symbols.csv",
-            'fin': "fin_all_symbols.csv"
+            'fin': "fin_all_symbols.csv",
+            'bizuni': "bizuni_cpgt.csv"
         }
         
         if data_type not in file_map:

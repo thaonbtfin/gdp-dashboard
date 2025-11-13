@@ -694,7 +694,7 @@ class DataManager:
         Load the latest data from the root data folder.
         
         Args:
-            data_type (str): Type of data to load ('history', 'perf', 'intrinsic', 'fin')
+            data_type (str): Type of data to load ('history', 'perf', 'intrinsic', 'fin', 'bizuni')
             
         Returns:
             pd.DataFrame: Loaded DataFrame or empty DataFrame if file not found
