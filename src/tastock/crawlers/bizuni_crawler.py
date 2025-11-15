@@ -54,7 +54,7 @@ class BizUniCrawler:
         elif "anh" in self.current_user.lower():
             self.credentials = {
                 'username': 'anh.chau515@gmail.com',
-                'password': '[need to fulfill]'
+                'password': '170583'
             }
         else:
             raise ValueError(f"❌ Incorrect running environment: Unknown user '{self.current_user}'")
