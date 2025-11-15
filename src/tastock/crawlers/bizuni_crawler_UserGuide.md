@@ -1,12 +1,13 @@
 # BizUni Crawler - User Guide
 
-A Python script to automatically fetch and save stock data from [bizuni.vn](https://bizuni.vn).
+A Python script to automatically fetch and save stock data from [bizuni.vn](https://bizuni.vn) with auto-login functionality.
 
 ## 📋 Prerequisites
 
 - **OS**: macOS (Darwin)
 - **Python**: 3.8+
 - **User**: Must be `thaonguyen` or `anhchau`
+- **Credentials**: Pre-configured for each user
 
 ## 🔧 Installation
 
@@ -25,16 +26,14 @@ gdp-dashboard/
 │   └── tastock/
 │       └── crawlers/
 │           ├── bizuni_crawler.py          # Main crawler script
-│           └── .sessions/                 # Session storage (auto-created)
-│               ├── auth_state_thaonguyen.json
-│               └── auth_state_anhchau.json
+│           └── debug_captcha/             # CAPTCHA debug files (auto-created)
 └── data/                                  # Output data folder
     └── bizuni_cpgt_DDMMYYYY_HHMMSS.csv
 ```
 
 ## 🚀 Quick Start
 
-### First Run (Automatic Login)
+### Auto-Login Process
 
 Simply run the script without any arguments:
 
@@ -45,26 +44,18 @@ python bizuni_crawler.py
 
 **What happens:**
 
-1. ✅ Script validates your macOS environment
-2. ✅ Detects you don't have a saved session
-3. 🔐 Opens browser and prompts you to log in manually
-4. ✅ Saves your session automatically
+1. ✅ Script validates your macOS environment and loads your credentials
+2. 🔐 Opens browser and automatically fills login form
+3. ⚠️ Handles CAPTCHA if present (manual intervention required)
+4. ✅ Completes login automatically
 5. 📥 Fetches and saves stock data to CSV
 
-### Subsequent Runs (Automatic)
+### Every Run is Fresh
 
-Just run the same command:
-
-```bash
-python bizuni_crawler.py
-```
-
-**What happens:**
-
-- ✅ Script detects existing session
-- ✅ Reuses saved session automatically
-- 📥 Fetches and saves data without manual login
-- ⚠️ If CAPTCHA appears, switches to headed mode for manual verification
+- 🔄 **No session storage** - fresh login every time
+- 🤖 **Auto-fill credentials** - based on your machine user
+- 🛡️ **CAPTCHA handling** - pauses for manual solving when needed
+- ⚡ **Robust selectors** - tries multiple form field selectors
 
 ## 📌 Available Commands
 
@@ -74,33 +65,21 @@ python bizuni_crawler.py
 python bizuni_crawler.py
 ```
 
-Fetches stock data. Auto-logs in first time, reuses session afterwards.
+Fetches stock data with auto-login. Fresh login every time.
 
-### 2. **Force New Login**
+### 2. **Login Only**
 
 ```bash
 python bizuni_crawler.py login
 ```
 
-Creates a fresh session, even if one exists. Useful if:
+Performs login process only without data crawling. Useful for:
 
-- Your session has expired
-- You want to update credentials
-- Previous login failed
+- Testing login functionality
+- Verifying credentials
+- Debugging login issues
 
-### 3. **Reset Session**
-
-```bash
-python bizuni_crawler.py reset
-```
-
-Deletes the saved session file for your account. Use this if:
-
-- You want to start fresh
-- Session is corrupted
-- You're switching accounts
-
-### 4. **Explicit Crawl**
+### 3. **Explicit Crawl**
 
 ```bash
 python bizuni_crawler.py crawl
@@ -121,43 +100,58 @@ Example filename: `bizuni_cpgt_13112025_143022.csv`
 - Other market data in table format
 - UTF-8 encoded (supports Vietnamese characters)
 
-## 🔐 Session Management
+## 🔐 Auto-Login System
 
-### How Sessions Work
+### How Auto-Login Works
 
-- **First login**: Script opens browser, you log in manually → saves session
-- **Subsequent runs**: Script uses saved session → no login needed
-- **Session file location**: `.sessions/auth_state_<username>.json`
-- **Per-user sessions**: Each account has its own session file
+- **Fresh login every time**: No session storage, always starts fresh
+- **Automatic credential filling**: Uses pre-configured credentials based on machine user
+- **Smart form detection**: Tries multiple selectors to find login fields
+- **CAPTCHA handling**: Pauses for manual intervention when CAPTCHA appears
 
-### Session Files
+### User Credentials
 
-```
-.sessions/
-├── auth_state_thaonguyen.json    # Thao's session
-└── auth_state_anhchau.json        # Anh's session
-```
+- **thaonguyen** → nb2t71@gmail.com (password: 070186)
+- **anhchau** → anh.chau515@gmail.com (password: [need to fulfill])
+
+### Form Field Detection
+
+The script tries multiple selectors for robust form filling:
+- **Email field**: `name="email"`, `name="username"`, `type="email"`, placeholder-based
+- **Password field**: `name="password"`, `type="password"`
+- **Submit button**: `type="submit"`, Vietnamese/English text, CSS classes
 
 ## ⚠️ Troubleshooting
 
-### Issue: "No session found" on first run
-
-**Solution**: Run the script normally - it will auto-prompt for login.
-
-```bash
-python bizuni_crawler.py
-```
-
-### Issue: CAPTCHA appears during crawl
+### Issue: CAPTCHA appears on login page
 
 **What happens**:
 
-1. Script detects CAPTCHA
-2. Automatically switches to headed mode
-3. Browser opens for manual CAPTCHA completion
-4. Script continues after you solve it
+1. Script opens browser in headed mode
+2. Detects CAPTCHA and pauses
+3. Prompts you to solve CAPTCHA manually
+4. Continues auto-login after you press Enter
 
-**No action needed** - just complete the CAPTCHA in the browser.
+**Action needed**: Solve CAPTCHA in browser, then press Enter in terminal.
+
+### Issue: CAPTCHA appears during data crawl
+
+**What happens**:
+
+1. Script detects CAPTCHA on data page
+2. Pauses for manual intervention
+3. Script continues after you solve it
+
+**Action needed**: Solve CAPTCHA in browser, then press Enter in terminal.
+
+### Issue: "Could not find email/username input field"
+
+**Possible causes**:
+
+- ❌ BizUni changed their form structure
+- ❌ Page didn't load completely
+
+**Solution**: Check browser window, wait for page to load, or report issue.
 
 ### Issue: "Incorrect running environment"
 
@@ -172,14 +166,9 @@ python bizuni_crawler.py
 whoami  # Check your username
 ```
 
-### Issue: Session expired or invalid
+### Issue: Login credentials not working
 
-**Solution**: Reset and create new session
-
-```bash
-python bizuni_crawler.py reset    # Delete old session
-python bizuni_crawler.py login    # Create new session
-```
+**Solution**: Update credentials in the script for your user.
 
 ### Issue: DataFrame/Pandas error
 
@@ -276,10 +265,10 @@ Add line (runs at 9:00 AM daily):
 
 ### Key Features
 
-- ✅ Session-based authentication (no repeated logins)
-- ✅ User-specific session files
+- ✅ Auto-login with pre-configured credentials
+- ✅ Smart form field detection (multiple selectors)
 - ✅ Automatic CAPTCHA detection and handling
-- ✅ Headless mode for automation
+- ✅ Fresh login every time (no session storage)
 - ✅ Human-like delays to avoid detection
 - ✅ Comprehensive error handling
 - ✅ Pandas DataFrame for data processing
@@ -292,19 +281,22 @@ Add line (runs at 9:00 AM daily):
 ## ❓ FAQ
 
 **Q: Will the script work if I close the terminal?**
-A: Yes, Playwright runs independently. Only affects interactive login prompts.
+A: No, the script needs terminal interaction for CAPTCHA handling.
 
 **Q: How long does crawling take?**
-A: Typically 30-60 seconds depending on page load time and data size.
+A: Typically 60-90 seconds including fresh login and potential CAPTCHA.
 
 **Q: Can multiple users use the same script?**
-A: Yes! Each user has their own session file automatically.
+A: Yes! Credentials are automatically selected based on machine user.
 
-**Q: Is my password stored?**
-A: No. Only session cookies/tokens are saved, not passwords.
+**Q: Is my password stored securely?**
+A: Passwords are hardcoded in the script for automation. Keep script secure.
 
-**Q: Can I share session files?**
-A: Not recommended. Sessions are tied to machine/user. Each user should log in once.
+**Q: Why no session storage?**
+A: BizUni has session time limits, so fresh login is more reliable.
+
+**Q: What if CAPTCHA appears every time?**
+A: This is normal. Just solve it manually when prompted.
 
 **Q: What if I forget to import pandas?**
 A: Script will fail with helpful error. Just run: `pip install pandas`
@@ -315,10 +307,10 @@ If you encounter issues:
 
 1. Check the **Troubleshooting** section above
 2. Review the terminal output for error messages
-3. Run with `python bizuni_crawler.py login` to refresh session
-4. Reset session with `python bizuni_crawler.py reset`
+3. Ensure browser window is visible for CAPTCHA solving
+4. Try running `python bizuni_crawler.py login` to test login only
 
 ---
 
 **Last Updated**: November 13, 2025
-**Version**: 1.0
+**Version**: 2.0 (Auto-Login)
