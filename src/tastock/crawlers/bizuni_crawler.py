@@ -25,7 +25,6 @@ class BizUniCrawler:
         self.context = None
         self.credentials = None
         self.current_user = None
-        self.session_file = None
         self._cleaned = False  # prevent double cleanup prints / operations
     
     async def __aenter__(self):
@@ -34,22 +33,6 @@ class BizUniCrawler:
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self._cleanup()
-    
-    def _get_session_file(self):
-        """Get session file path based on current user"""
-        if not self.current_user:
-            self.current_user = getpass.getuser()
-        
-        session_dir = Path(__file__).parent / ".sessions"
-        session_dir.mkdir(exist_ok=True)
-        
-        self.session_file = session_dir / f"auth_state_{self.current_user}.json"
-        return self.session_file
-    
-    def _session_exists(self) -> bool:
-        """Check if session file exists for current user"""
-        self._get_session_file()
-        return self.session_file.exists()
     
     async def _human_delay(self, min_s=2.5, max_s=5.0):
         """Random delay to mimic human behavior"""
@@ -76,51 +59,100 @@ class BizUniCrawler:
         else:
             raise ValueError(f"❌ Incorrect running environment: Unknown user '{self.current_user}'")
         
-        self._get_session_file()
         print(f"✅ Environment validated for user: {self.current_user}")
     
-    async def login_and_save_session(self):
-        """Manual login process with session state saving"""
-        temp_browser = None
-        temp_context = None
-        temp_page = None
+    async def auto_login(self):
+        """Auto login using predefined credentials"""
+        self._validate_environment()
         
-        try:
-            self._validate_environment()
-            
-            # Check if session already exists
-            if self.session_file.exists():
-                print(f"ℹ️  Session file already exists at: {self.session_file}")
-                response = (await asyncio.to_thread(input, "Do you want to create a new session? (yes/no): ")).strip().lower()
-                if response not in ['yes', 'y']:
-                    print("✅ Keeping existing session.")
-                    return
-                else:
-                    print("🔄 Creating new session...")
-            
-            temp_browser = await self.playwright.chromium.launch(headless=False, slow_mo=200)
-            temp_context = await temp_browser.new_context()
-            temp_page = await temp_context.new_page()
-            
-            print("➡️ Opening login page...")
-            await temp_page.goto(f"{self.base_url}/dang-nhap")
-            
-            print("⚙️ Please log in manually in the browser window.")
-            print("✅ Once you're fully logged in, press Enter here.")
-            await asyncio.to_thread(input, "Press Enter when ready...")
-            
-            # Save cookies and local storage
-            await temp_context.storage_state(path=str(self.session_file))
-            print(f"💾 Session saved successfully to '{self.session_file}'.")
-            
-        finally:
-            # Clean up temporary browser resources
-            if temp_page:
-                await temp_page.close()
-            if temp_context:
-                await temp_context.close()
-            if temp_browser:
-                await temp_browser.close()
+        # Start in headed mode to handle potential CAPTCHA
+        self.browser = await self.playwright.chromium.launch(headless=False, slow_mo=200)
+        self.context = await self.browser.new_context()
+        self.page = await self.context.new_page()
+        
+        print("➡️ Opening login page...")
+        await self.page.goto(f"{self.base_url}/dang-nhap")
+        await self._human_delay()
+        
+        # Check for CAPTCHA first
+        if await self._detect_captcha():
+            print("⚠️ CAPTCHA detected on login page! Please solve it manually.")
+            await asyncio.to_thread(input, "Press Enter after solving CAPTCHA...")
+        
+        print(f"🔐 Auto-logging in as {self.credentials['username']}...")
+        
+        # Try different selectors for email/username field
+        email_selectors = [
+            'input[name="email"]',
+            'input[name="username"]', 
+            'input[type="email"]',
+            'input[placeholder*="email"]',
+            'input[placeholder*="Email"]'
+        ]
+        
+        email_filled = False
+        for selector in email_selectors:
+            try:
+                await self.page.wait_for_selector(selector, timeout=3000)
+                await self.page.fill(selector, self.credentials['username'])
+                email_filled = True
+                print(f"✅ Found email field with selector: {selector}")
+                break
+            except Exception:
+                continue
+        
+        if not email_filled:
+            raise RuntimeError("❌ Could not find email/username input field")
+        
+        await self._human_delay(0.5, 1.0)
+        
+        # Try different selectors for password field
+        password_selectors = [
+            'input[name="password"]',
+            'input[type="password"]'
+        ]
+        
+        password_filled = False
+        for selector in password_selectors:
+            try:
+                await self.page.fill(selector, self.credentials['password'])
+                password_filled = True
+                print(f"✅ Found password field with selector: {selector}")
+                break
+            except Exception:
+                continue
+        
+        if not password_filled:
+            raise RuntimeError("❌ Could not find password input field")
+        
+        await self._human_delay(0.5, 1.0)
+        
+        # Try different selectors for submit button
+        submit_selectors = [
+            'button[type="submit"]',
+            'input[type="submit"]',
+            'button:has-text("Đăng nhập")',
+            'button:has-text("Login")',
+            '.btn-login'
+        ]
+        
+        submit_clicked = False
+        for selector in submit_selectors:
+            try:
+                await self.page.click(selector)
+                submit_clicked = True
+                print(f"✅ Found submit button with selector: {selector}")
+                break
+            except Exception:
+                continue
+        
+        if not submit_clicked:
+            print("⚠️ Could not find submit button, please click login manually")
+            await asyncio.to_thread(input, "Press Enter after clicking login...")
+        
+        await self._human_delay(2.0, 3.0)
+        
+        print("✅ Auto-login completed")
     
     async def _detect_captcha(self) -> bool:
         """Detect if CAPTCHA or access denied page is shown"""
@@ -142,7 +174,7 @@ class BizUniCrawler:
     
     async def _save_captcha_debug_artifacts(self):
         """Save debug artifacts when CAPTCHA is detected but no display is available"""
-        debug_dir = Path(__file__).parent / ".sessions" / "debug_captcha"
+        debug_dir = Path(__file__).parent / "debug_captcha"
         debug_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         screenshot_path = debug_dir / f"captcha_{timestamp}.png"
@@ -158,74 +190,46 @@ class BizUniCrawler:
             print(f"⚠️ Failed to save debug artifacts: {e}")
     
     async def _handle_captcha(self):
-        """Handle CAPTCHA by switching to headed mode"""
-        print("⚠️ CAPTCHA detected! Switching to headed mode for manual verification...")
+        """Handle CAPTCHA by pausing for manual intervention"""
+        print("⚠️ CAPTCHA detected! Please solve it manually in the browser.")
         
-        # If environment cannot show browser (CI / headless server), save debug artifacts and abort
+        # If environment cannot show browser, save debug artifacts
         def _can_show_browser():
-            # macOS GUI normally ok; on CI or headless linux without DISPLAY, don't try to show
             if platform.system() == "Darwin":
                 return True
             if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") or os.environ.get("RUNNING_IN_DOCKER"):
                 return False
             if os.environ.get("DISPLAY"):
                 return True
-            # fallback to tty check
             return sys.stdout.isatty()
 
         if not _can_show_browser():
             await self._save_captcha_debug_artifacts()
             raise RuntimeError("CAPTCHA detected and no display available to solve it automatically.")
 
-        # Close current headless browser
-        if self.page and not self.page.is_closed():
-            await self.page.close()
-        if self.context:
-            await self.context.close()
-        if self.browser:
-            await self.browser.close()
-        
-        # Relaunch in headed mode
-        self.browser = await self.playwright.chromium.launch(headless=False, slow_mo=150)
-        self.context = await self.browser.new_context(storage_state=str(self.session_file))
-        self.page = await self.context.new_page()
-        
-        await self.page.goto(self.data_url)
-        print("✅ Please complete the CAPTCHA manually. The browser will continue after you close it.")
-        await self.page.pause()
+        # Wait for user to solve CAPTCHA
+        await asyncio.to_thread(input, "Press Enter after solving CAPTCHA...")
     
     async def crawl_stock_data(self):
         """Main method to crawl stock data from BizUni"""
         try:
             self._validate_environment()
             
-            # Check if session exists
-            if not self._session_exists():
-                print(f"\n⚠️  No session found for user '{self.current_user}'")
-                print("🔐 Starting login process...")
-                await self.login_and_save_session()
-                
-                if not self._session_exists():
-                    raise RuntimeError("❌ Session creation failed. Please try again.")
-                print("✅ Session created successfully. Proceeding with data crawl...\n")
+            # Start auto-login process
+            print(f"\n🔐 Starting auto-login for user '{self.current_user}'...")
+            await self.auto_login()
             
+            print("✅ Login completed. Proceeding with data crawl...\n")
             print("\n=== 🚀 Starting data fetch... ===")
-            
-            # Launch browser with saved session
-            # No need to clear cache/cookies - session handles authentication
-            self.browser = await self.playwright.chromium.launch(headless=True)
-            self.context = await self.browser.new_context(storage_state=str(self.session_file))
-            self.page = await self.context.new_page()
             
             try:
                 print(f"➡️ Navigating to {self.data_url}")
-                await self.page.goto(self.data_url, timeout=60000, wait_until="networkidle")
+                await self.page.goto(self.data_url, timeout=60000, wait_until="load")
                 await self._human_delay()
                 
-                # Check for CAPTCHA
+                # Check for CAPTCHA on data page
                 if await self._detect_captcha():
                     await self._handle_captcha()
-                    await self.page.goto(self.data_url, wait_until="networkidle")
                 
                 print(f"✅ Successfully loaded page {self.data_url}.")
                 print("\n=== 🔍 Starting data extraction... ===")
@@ -388,25 +392,15 @@ class BizUniCrawler:
 
 # Main functions
 async def login_bizuni():
-    """Login and save session"""
+    """Auto login process"""
     async with BizUniCrawler() as crawler:
-        await crawler.login_and_save_session()
+        await crawler.auto_login()
 
 async def crawl_bizuni_data():
-    """Crawl BizUni stock data - auto-login if needed"""
+    """Crawl BizUni stock data with fresh login"""
     async with BizUniCrawler() as crawler:
         filename = await crawler.crawl_stock_data()
         return filename
-
-async def reset_session():
-    """Reset session for current user"""
-    async with BizUniCrawler() as crawler:
-        crawler._validate_environment()
-        if crawler.session_file.exists():
-            crawler.session_file.unlink()
-            print(f"✅ Session deleted: {crawler.session_file}")
-        else:
-            print(f"ℹ️  No session found for user '{crawler.current_user}'")
 
 def main():
     """Main function to handle command line arguments"""
@@ -421,13 +415,6 @@ def main():
         except Exception as e:
             print(f"❌ Login failed: {e}")
     
-    elif command == "reset":
-        print("\n🔄 Resetting session...")
-        try:
-            asyncio.run(reset_session())
-        except Exception as e:
-            print(f"❌ Reset failed: {e}")
-    
     elif command == "crawl":
         print("\n=== 📥 Starting data crawl... ===")
         try:
@@ -438,7 +425,7 @@ def main():
     
     else:
         print(f"\n=== ❌ Unknown command: {command} ===")
-        print("Available commands: login, crawl, reset")
+        print("Available commands: login, crawl")
 
 if __name__ == "__main__":
     main()
