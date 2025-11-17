@@ -1052,12 +1052,24 @@ class TAstock_st:
     @staticmethod
     def _display_investment_summary(signals_df):
         """Display investment summary"""
-        st.header("📊 Tổng hợp Phân tích Đầu tư", divider="gray")
-        
         # Market direction
         if 'market_direction' in signals_df.columns:
             market_direction = signals_df['market_direction'].iloc[0]
             st.subheader(f"📈 Hướng thị trường: {market_direction}")
+        
+        # Add guide expander after market direction
+        with st.expander("📋 Hướng dẫn đọc 3 trường phái"):
+            st.markdown("""
+**Tín hiệu đầu tư:**
+- 🟢 **BUY**: Ưu tiên đầu tư - Cổ phiếu có tiềm năng tăng trưởng tốt
+- 🔵 **HOLD**: Cân nhắc - Cổ phiếu trung tính, chưa rõ hướng
+- 🔴 **SELL**: Thận trọng - Cổ phiếu có rủi ro hoặc quá đắt
+
+**3 Trường phái phân tích:**
+- **Value**: Tìm cổ phiếu rẻ so với giá trị thực (P/E, ROE)
+- **CANSLIM**: Tìm cổ phiếu tăng trưởng mạnh (Return, RS Rating)
+- **Technical**: Phân tích biểu đồ và xu hướng giá (RSI, MACD)
+            """)
         
         # Signal distribution
         signal_counts = signals_df['final_signal'].value_counts()
@@ -1066,17 +1078,17 @@ class TAstock_st:
         with col1:
             buy_count = signal_counts.get('BUY', 0)
             buy_pct = (buy_count / len(signals_df) * 100) if len(signals_df) > 0 else 0
-            st.metric("🟢 Tín hiệu MUA", f"{buy_count} cổ phiếu", f"{buy_pct:.1f}%")
+            st.metric("🟢 Tín hiệu BUY → Ưu tiên đầu tư", f"{buy_count} cổ phiếu", f"{buy_pct:.1f}%")
         
         with col2:
-            sell_count = signal_counts.get('SELL', 0)
-            sell_pct = (sell_count / len(signals_df) * 100) if len(signals_df) > 0 else 0
-            st.metric("🔴 Tín hiệu BÁN", f"{sell_count} cổ phiếu", f"{sell_pct:.1f}%")
-        
-        with col3:
             hold_count = signal_counts.get('HOLD', 0)
             hold_pct = (hold_count / len(signals_df) * 100) if len(signals_df) > 0 else 0
-            st.metric("🟡 Tín hiệu HOLD", f"{hold_count} cổ phiếu", f"{hold_pct:.1f}%")
+            st.metric("🔵 Tín hiệu HOLD → Cân nhắc", f"{hold_count} cổ phiếu", f"{hold_pct:.1f}%")
+        
+        with col3:
+            sell_count = signal_counts.get('SELL', 0)
+            sell_pct = (sell_count / len(signals_df) * 100) if len(signals_df) > 0 else 0
+            st.metric("🔴 Tín hiệu SELL → Thận trọng", f"{sell_count} cổ phiếu", f"{sell_pct:.1f}%")
         
         # Top recommendations
         st.subheader("🎯 Top 10 Khuyến nghị MUA")
@@ -1108,11 +1120,11 @@ class TAstock_st:
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("BUY", value_signals.get('BUY', 0))
+            st.metric("🟢 BUY", value_signals.get('BUY', 0))
         with col2:
-            st.metric("HOLD", value_signals.get('HOLD', 0))
+            st.metric("🔵 HOLD", value_signals.get('HOLD', 0))
         with col3:
-            st.metric("SELL", value_signals.get('SELL', 0))
+            st.metric("🔴 SELL", value_signals.get('SELL', 0))
         
         # Top Value picks
         st.subheader("🎯 Top Value Picks")
@@ -1146,11 +1158,11 @@ class TAstock_st:
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("BUY", canslim_signals.get('BUY', 0))
+            st.metric("🟢 BUY", canslim_signals.get('BUY', 0))
         with col2:
-            st.metric("HOLD", canslim_signals.get('HOLD', 0))
+            st.metric("🔵 HOLD", canslim_signals.get('HOLD', 0))
         with col3:
-            st.metric("SELL", canslim_signals.get('SELL', 0))
+            st.metric("🔴 SELL", canslim_signals.get('SELL', 0))
         
         # Top CANSLIM picks
         st.subheader("🎯 Top CANSLIM Picks")
@@ -1182,11 +1194,11 @@ class TAstock_st:
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("BUY", technical_signals.get('BUY', 0))
+            st.metric("🟢 BUY", technical_signals.get('BUY', 0))
         with col2:
-            st.metric("HOLD", technical_signals.get('HOLD', 0))
+            st.metric("🔵 HOLD", technical_signals.get('HOLD', 0))
         with col3:
-            st.metric("SELL", technical_signals.get('SELL', 0))
+            st.metric("🔴 SELL", technical_signals.get('SELL', 0))
         
         # Top Technical picks
         st.subheader("🎯 Top Technical Picks")
@@ -1249,20 +1261,19 @@ class TAstock_st:
             
             # Add expander with investment signals table
             with st.expander("📋 Bảng so sánh tín hiệu đầu tư", expanded=True):
-                def color_final_signal(val):
-                    """Color code the final_signal column"""
-                    if val == 'BUY':
-                        return 'background-color: lightgreen'
-                    elif val == 'SELL':
-                        return 'background-color: lightcoral'
+                def highlight_signal_rows(row):
+                    """Highlight entire rows based on final_signal"""
+                    if row['final_signal'] == 'BUY':
+                        return ['background-color: #CCFFCC'] * len(row)  # Light green - same as BizUni MAX
+                    elif row['final_signal'] == 'SELL':
+                        return ['background-color: #FFCCCB'] * len(row)  # Light red for SELL
+                    elif row['final_signal'] == 'HOLD':
+                        return ['background-color: #CCFFFF'] * len(row)  # Light blue - same as BizUni MED
                     else:
-                        return ''
+                        return [''] * len(row)
                 
-                # Apply styling to the final_signal column
-                styled_df = signals_df.style.map(
-                    color_final_signal, 
-                    subset=['final_signal']
-                )
+                # Apply styling to entire rows
+                styled_df = signals_df.style.apply(highlight_signal_rows, axis=1)
                 
                 st.dataframe(
                     styled_df,
@@ -1270,20 +1281,7 @@ class TAstock_st:
                     height=600
                 )
                 
-                # Summary statistics
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    buy_count = len(signals_df[signals_df['final_signal'] == 'BUY'])
-                    st.metric("🟢 BUY", buy_count)
-                
-                with col2:
-                    hold_count = len(signals_df[signals_df['final_signal'] == 'HOLD'])
-                    st.metric("🟡 HOLD", hold_count)
-                
-                with col3:
-                    sell_count = len(signals_df[signals_df['final_signal'] == 'SELL'])
-                    st.metric("🔴 SELL", sell_count)
+
         
         with value_tab:
             TAstock_st._display_value_investing_tab(signals_df)
