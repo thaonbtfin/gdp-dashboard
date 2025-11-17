@@ -36,20 +36,148 @@ class BizUniCrawler:
         delay = random.uniform(min_s, max_s)
         await asyncio.sleep(delay)
     
+    def _get_credentials(self):
+        """Get credentials based on machine user - only on Mac for thao/anh"""
+        import getpass
+        
+        current_os = platform.system()
+        username = getpass.getuser().lower()
+        
+        print(f"🔍 _get_credentials debug:")
+        print(f"   OS: '{current_os}' (Darwin check: {current_os == 'Darwin'})")
+        print(f"   User: '{username}' (in list: {username in ['thaonguyen', 'anhchau']})")
+        
+        # Only allow automation on Mac
+        if current_os != "Darwin":
+            print(f"   ❌ OS not Darwin, returning None")
+            return None
+            
+        # Only allow specific users
+        if username not in ['thaonguyen', 'anhchau']:
+            print(f"   ❌ User not in allowed list, returning None")
+            return None
+        
+        credentials = {
+            'thaonguyen': {
+                'email': 'nb2t71@gmail.com',
+                'password': '070186'
+            },
+            'anhchau': {
+                'email': 'anh.chau515@gmail.com',
+                'password': '170583'
+            }
+        }
+        
+        result = credentials.get(username)
+        print(f"   ✅ Credentials found: {result is not None}")
+        if result:
+            print(f"   📧 Email: {result['email']}")
+        return result
+    
+    async def _try_auto_login(self):
+        """Try automated login with stored credentials"""
+        creds = self._get_credentials()
+        if not creds:
+            import getpass
+            current_user = getpass.getuser().lower()
+            current_os = platform.system()
+            print(f"⚠️ Automated login not available")
+            print(f"   Current OS: {current_os} (requires: Darwin/Mac)")
+            print(f"   Current user: {current_user} (requires: thao or anh)")
+            return False
+        
+        print(f"🤖 Attempting automated login for user: {creds['email']}")
+        
+        try:
+            # Wait for page to load completely
+            print("🔄 Waiting for page to load...")
+            await self.page.wait_for_load_state('load', timeout=15000)
+            
+            # Use exact selectors from the HTML structure
+            username_selector = '#form-element-username'
+            password_selector = '#form-element-password'
+            login_button_selector = 'button[type="submit"].btn.btn-p'
+            
+            # Wait for username field
+            print("🔍 Looking for login form...")
+            await self.page.wait_for_selector(username_selector, timeout=10000)
+            print("✅ Login form found")
+            
+            # Fill username
+            await self.page.fill(username_selector, creds['email'])
+            print(f"✅ Username filled: {creds['email']}")
+            await self._human_delay(0.5, 1.0)
+            
+            # Fill password
+            await self.page.fill(password_selector, creds['password'])
+            print("✅ Password filled")
+            await self._human_delay(0.5, 1.0)
+            
+            # Click login button
+            await self.page.click(login_button_selector)
+            print("✅ Login button clicked")
+            
+            # Wait for navigation with longer timeout
+            print("⏳ Waiting for login to complete...")
+            try:
+                await self.page.wait_for_load_state('networkidle', timeout=25000)
+            except:
+                print("⚠️ Timeout waiting for networkidle, checking URL anyway...")
+            
+            # Check if login was successful
+            current_url = self.page.url
+            print(f"🌐 Current URL: {current_url}")
+            
+            if 'dang-nhap' not in current_url:
+                print("✅ Automated login successful - redirected away from login page")
+                return True
+            else:
+                print(f"⚠️ Still on login page, checking for error messages...")
+                # Check for error messages
+                try:
+                    error_elements = await self.page.locator('.alert, .error, .invalid').count()
+                    if error_elements > 0:
+                        error_text = await self.page.locator('.alert, .error, .invalid').first.text_content()
+                        print(f"❌ Login error: {error_text}")
+                except:
+                    pass
+                return False
+                
+        except Exception as e:
+            print(f"⚠️ Automated login failed: {e}")
+            # Take screenshot for debugging
+            try:
+                await self.page.screenshot(path='debug_login_failed.png')
+                print("📷 Debug screenshot saved: debug_login_failed.png")
+            except:
+                pass
+            return False
+    
     async def manual_login_prompt(self):
-        """Prompt user to manually login since auto-login doesn't work"""
-        # Start in headed mode for manual login
+        """Try automated login first, fallback to manual login"""
+        # Start in headed mode for login
         self.browser = await self.playwright.chromium.launch(headless=False, slow_mo=200)
         self.context = await self.browser.new_context()
         self.page = await self.context.new_page()
         
-        print("➡️ Opening BizUni login page for manual login...")
-        await self.page.goto(f"{self.base_url}/dang-nhap")
-        await self._human_delay()
+        print("➡️ Opening BizUni login page...")
+        await self.page.goto(f"{self.base_url}/dang-nhap", wait_until='load', timeout=30000)
+        print("✅ Login page loaded")
         
-        print("🔐 Please login manually in the browser window.")
-        print("⚠️ Note: Auto-login has been disabled as it doesn't work reliably with the site.")
-        await asyncio.to_thread(input, "Press Enter after completing manual login...")
+        # Try automated login first
+        print("\n🤖 Attempting automated login...")
+        if await self._try_auto_login():
+            print("✅ Automated login succeeded, proceeding with data extraction")
+            return
+        
+        # Fallback to manual login
+        print("❌ Automated login failed, falling back to manual login")
+        print("\n" + "="*60)
+        print("🔐 MANUAL LOGIN REQUIRED")
+        print("="*60)
+        print("Please login manually in the browser window.")
+        print("="*60)
+        await asyncio.to_thread(input, "\n👆 Press Enter AFTER you have successfully logged in: ")
         
         print("✅ Manual login completed")
     
@@ -112,8 +240,8 @@ class BizUniCrawler:
     async def crawl_stock_data(self):
         """Main method to crawl stock data from BizUni"""
         try:
-            # Start manual login process
-            print("\n🔐 Starting manual login process...")
+            # Start login process (auto + manual fallback)
+            print("\n🔐 Starting login process (automated + manual fallback)...")
             await self.manual_login_prompt()
             
             print("✅ Login completed. Proceeding with data crawl...\n")
