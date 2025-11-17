@@ -8,7 +8,6 @@ import pandas as pd
 from typing import Dict, Optional
 
 import numpy as np
-from vnstock import Vnstock
 from src.constants import DEFAULT_SOURCE
 
 class DataCalculator:
@@ -88,18 +87,9 @@ class DataCalculator:
                 print(f"Error calculating intrinsic value for {symbol} with provided financial data: {e}")
                 return None
         
-        # If no financial data is provided, fetch it first
-        try:
-            financial_data = Vnstock().stock(symbol=symbol, source=source).finance.ratio(period='year', lang='vi', dropna=True)
-            if financial_data.empty:
-                return None
-            
-            intrinsic_value = self._calculate_graham_intrinsic_value(financial_data)
-            self._intrinsic_value_cache[symbol] = intrinsic_value
-            return intrinsic_value
-        except Exception as e:
-            print(f"Error calculating intrinsic value for {symbol}: {e}")
-            return None
+        # If no financial data is provided, return None (vnstock dependency removed)
+        print(f"No financial data provided for {symbol}. Use generate_intrinsic_values.py script instead.")
+        return None
     
     def calculate_technical_indicators(self, df: pd.DataFrame, symbol: str = None) -> Dict:
         """Calculate technical indicators from historical data."""

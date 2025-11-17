@@ -1,6 +1,5 @@
 streamlit
 pandas
-vnstock
 xgboost
 scikit-learn
 plotly
