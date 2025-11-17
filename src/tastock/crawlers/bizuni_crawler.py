@@ -8,7 +8,6 @@ import asyncio
 import pandas as pd
 from playwright.async_api import async_playwright
 import platform
-import getpass
 from datetime import datetime
 import os
 from pathlib import Path
@@ -23,8 +22,6 @@ class BizUniCrawler:
         self.browser = None
         self.page = None
         self.context = None
-        self.credentials = None
-        self.current_user = None
         self._cleaned = False  # prevent double cleanup prints / operations
     
     async def __aenter__(self):
@@ -39,120 +36,22 @@ class BizUniCrawler:
         delay = random.uniform(min_s, max_s)
         await asyncio.sleep(delay)
     
-    def _validate_environment(self):
-        """Validate OS and user environment"""
-        if platform.system() != "Darwin":
-            raise OSError("❌ Incorrect running environment: OS must be macOS")
-        
-        self.current_user = getpass.getuser()
-        
-        if "thao" in self.current_user.lower():
-            self.credentials = {
-                'username': 'nb2t71@gmail.com',
-                'password': '070186'
-            }
-        elif "anh" in self.current_user.lower():
-            self.credentials = {
-                'username': 'anh.chau515@gmail.com',
-                'password': '170583'
-            }
-        else:
-            raise ValueError(f"❌ Incorrect running environment: Unknown user '{self.current_user}'")
-        
-        print(f"✅ Environment validated for user: {self.current_user}")
-    
-    async def auto_login(self):
-        """Auto login using predefined credentials"""
-        self._validate_environment()
-        
-        # Start in headed mode to handle potential CAPTCHA
+    async def manual_login_prompt(self):
+        """Prompt user to manually login since auto-login doesn't work"""
+        # Start in headed mode for manual login
         self.browser = await self.playwright.chromium.launch(headless=False, slow_mo=200)
         self.context = await self.browser.new_context()
         self.page = await self.context.new_page()
         
-        print("➡️ Opening login page...")
+        print("➡️ Opening BizUni login page for manual login...")
         await self.page.goto(f"{self.base_url}/dang-nhap")
         await self._human_delay()
         
-        # Check for CAPTCHA first
-        if await self._detect_captcha():
-            print("⚠️ CAPTCHA detected on login page! Please solve it manually.")
-            await asyncio.to_thread(input, "Press Enter after solving CAPTCHA...")
+        print("🔐 Please login manually in the browser window.")
+        print("⚠️ Note: Auto-login has been disabled as it doesn't work reliably with the site.")
+        await asyncio.to_thread(input, "Press Enter after completing manual login...")
         
-        print(f"🔐 Auto-logging in as {self.credentials['username']}...")
-        
-        # Try different selectors for email/username field
-        email_selectors = [
-            'input[name="email"]',
-            'input[name="username"]', 
-            'input[type="email"]',
-            'input[placeholder*="email"]',
-            'input[placeholder*="Email"]'
-        ]
-        
-        email_filled = False
-        for selector in email_selectors:
-            try:
-                await self.page.wait_for_selector(selector, timeout=3000)
-                await self.page.fill(selector, self.credentials['username'])
-                email_filled = True
-                print(f"✅ Found email field with selector: {selector}")
-                break
-            except Exception:
-                continue
-        
-        if not email_filled:
-            raise RuntimeError("❌ Could not find email/username input field")
-        
-        await self._human_delay(0.5, 1.0)
-        
-        # Try different selectors for password field
-        password_selectors = [
-            'input[name="password"]',
-            'input[type="password"]'
-        ]
-        
-        password_filled = False
-        for selector in password_selectors:
-            try:
-                await self.page.fill(selector, self.credentials['password'])
-                password_filled = True
-                print(f"✅ Found password field with selector: {selector}")
-                break
-            except Exception:
-                continue
-        
-        if not password_filled:
-            raise RuntimeError("❌ Could not find password input field")
-        
-        await self._human_delay(0.5, 1.0)
-        
-        # Try different selectors for submit button
-        submit_selectors = [
-            'button[type="submit"]',
-            'input[type="submit"]',
-            'button:has-text("Đăng nhập")',
-            'button:has-text("Login")',
-            '.btn-login'
-        ]
-        
-        submit_clicked = False
-        for selector in submit_selectors:
-            try:
-                await self.page.click(selector)
-                submit_clicked = True
-                print(f"✅ Found submit button with selector: {selector}")
-                break
-            except Exception:
-                continue
-        
-        if not submit_clicked:
-            print("⚠️ Could not find submit button, please click login manually")
-            await asyncio.to_thread(input, "Press Enter after clicking login...")
-        
-        await self._human_delay(2.0, 3.0)
-        
-        print("✅ Auto-login completed")
+        print("✅ Manual login completed")
     
     async def _detect_captcha(self) -> bool:
         """Detect if CAPTCHA or access denied page is shown"""
@@ -213,11 +112,9 @@ class BizUniCrawler:
     async def crawl_stock_data(self):
         """Main method to crawl stock data from BizUni"""
         try:
-            self._validate_environment()
-            
-            # Start auto-login process
-            print(f"\n🔐 Starting auto-login for user '{self.current_user}'...")
-            await self.auto_login()
+            # Start manual login process
+            print("\n🔐 Starting manual login process...")
+            await self.manual_login_prompt()
             
             print("✅ Login completed. Proceeding with data crawl...\n")
             print("\n=== 🚀 Starting data fetch... ===")
@@ -391,13 +288,8 @@ class BizUniCrawler:
             print(f"\n⚠️ Error during cleanup: {e}")
 
 # Main functions
-async def login_bizuni():
-    """Auto login process"""
-    async with BizUniCrawler() as crawler:
-        await crawler.auto_login()
-
 async def crawl_bizuni_data():
-    """Crawl BizUni stock data with fresh login"""
+    """Crawl BizUni stock data with manual login"""
     async with BizUniCrawler() as crawler:
         filename = await crawler.crawl_stock_data()
         return filename
@@ -408,14 +300,7 @@ def main():
     
     command = sys.argv[1].lower() if len(sys.argv) > 1 else "crawl"
     
-    if command == "login":
-        print("\n🔐 Starting login process...")
-        try:
-            asyncio.run(login_bizuni())
-        except Exception as e:
-            print(f"❌ Login failed: {e}")
-    
-    elif command == "crawl":
+    if command == "crawl":
         print("\n=== 📥 Starting data crawl... ===")
         try:
             filename = asyncio.run(crawl_bizuni_data())
@@ -425,7 +310,7 @@ def main():
     
     else:
         print(f"\n=== ❌ Unknown command: {command} ===")
-        print("Available commands: login, crawl")
+        print("Available commands: crawl")
 
 if __name__ == "__main__":
     main()

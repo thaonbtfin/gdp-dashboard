@@ -1,23 +1,41 @@
-# :earth_americas: GDP dashboard template
+# 📈 TAstock - Vietnamese Stock Analysis Dashboard
 
-A simple Streamlit app showing the GDP of different countries in the world.
+A comprehensive Streamlit application for Vietnamese stock market analysis with multiple investment methodologies.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://gdp-dashboard-template.streamlit.app/)
+## Features
 
-### How to run it on your own machine
+- **📊 Multi-Portfolio Analysis**: VN30, VN100, DH, TH portfolios
+- **💼 Investment Analysis**: Value Investing, CANSLIM, Technical Analysis
+- **📈 Technical Indicators**: 15+ indicators with CafeF-style interface
+- **🔍 Stock Details**: Performance metrics, intrinsic values
+- **📁 BizUni Integration**: Automated data crawling
 
-1. Install the requirements
+## Quick Start
 
+1. **Install requirements**
+   ```bash
+   pip install -r requirements.txt
    ```
-   $ pip install -r requirements.txt
+
+2. **Run TAstock dashboard**
+   ```bash
+   streamlit run streamlit_app_tastock.py
+   ```
+   
+   Or use the one-click script:
+   ```bash
+   ./run_tastock.sh
    ```
 
-2. Run the app GDP dashboard
+## Data Pipeline
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
-   OR run the app AI dashboard
-   ```
-   $ streamlit run streamlit_app_chatgpt_ai_app_csv_v1_2.py
-   ```
+```bash
+# Run complete data pipeline
+python src/tastock/workflows/wf_stock_data_updater.py
+```
+
+## Documentation
+
+- [Data Management](src/tastock/README.md)
+- [Technical Analysis Guide](doc/readme_technical_analysis.md)
+- [Investment Principles](doc/references/INVESTMENT_PRINCIPLES.md)
