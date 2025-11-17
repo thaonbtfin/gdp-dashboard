@@ -14,7 +14,7 @@ from typing import Optional, Tuple
 from urllib.parse import urlparse
 from email.message import Message
 
-from ..workflows.wf_components import StructuredDataProcessor, FileCopier, DataFileManager
+from .data_processors import StructuredDataProcessor, FileCopier, DataFileManager
 from src.constants import DEFAULT_OUTPUT_DIR
 
 class DataDownloader:
