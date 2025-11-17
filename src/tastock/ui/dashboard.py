@@ -9,7 +9,7 @@ import pandas as pd
 import math
 import os
 
-from ..core.stock import Stock
+# from ..core.stock import Stock  # Removed vnstock dependency
 from ..utils.helpers import Helpers
 from ..data.data_calculator import DataCalculator
 from ..data.data_manager import DataManager

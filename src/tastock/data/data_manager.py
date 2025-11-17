@@ -11,10 +11,10 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
 from functools import lru_cache
 
-from .data_fetcher import DataFetcher
+# from .data_fetcher import DataFetcher  # Removed vnstock dependency
 from .data_calculator import DataCalculator
 from .data_storage import DataStorage
-from ..core.portfolio import Portfolio
+# from ..core.portfolio import Portfolio  # Removed vnstock dependency
 from src.constants import DEFAULT_SOURCE, DEFAULT_OUTPUT_DIR
 
 class DataManager:
@@ -38,7 +38,7 @@ class DataManager:
         self.source = source
         
         # Initialize components
-        self.fetcher = DataFetcher(source=source)
+        # self.fetcher = DataFetcher(source=source)  # Removed vnstock dependency
         self.calculator = DataCalculator()
         self.storage = DataStorage(base_output_dir=base_output_dir)
         
@@ -61,7 +61,9 @@ class DataManager:
         Returns:
             Dict[str, pd.DataFrame]: Dictionary of {symbol: dataframe}
         """
-        return self.fetcher.fetch_stock_data(symbols, start_date, end_date, force_refresh)
+        # Fetching from external sources disabled (vnstock dependency removed)
+        print(f"External data fetching disabled. Use load_data_from_local_files instead.")
+        return {}
     
     def calculate_performance_metrics(
         self, 
@@ -97,16 +99,9 @@ class DataManager:
         Returns:
             Optional[float]: Intrinsic value or None if calculation fails
         """
-        # Fetch financial data first
-        financial_data = self.fetcher.fetch_financial_data(symbol)
-        
-        # Calculate intrinsic value
-        return self.calculator.calculate_intrinsic_value(
-            symbol, 
-            financial_data=financial_data,
-            source=self.source,
-            force_recalculate=force_recalculate
-        )
+        # Financial data fetching disabled (vnstock dependency removed)
+        print(f"External financial data fetching disabled for {symbol}. Use generate_intrinsic_values.py script instead.")
+        return None
     
     def save_stock_data(
         self, 
@@ -223,19 +218,10 @@ class DataManager:
             metrics = self.calculate_performance_metrics(symbol, data)
             performance_metrics[symbol] = metrics
         
-        # Create portfolio object
-        portfolio = Portfolio(
-            symbols=symbols,
-            start_date=start_date,
-            end_date=end_date,
-            source=self.source,
-            weights=weights,
-            name=portfolio_name,
-            fetched_data=stock_data
-        )
-        
-        portfolio_metrics = portfolio.get_performance_metrics()
-        portfolio_value_series = portfolio.get_portfolio_value_series()
+        # Portfolio functionality disabled (vnstock dependency removed)
+        print(f"Portfolio processing disabled for {portfolio_name}")
+        portfolio_metrics = {}
+        portfolio_value_series = pd.DataFrame()
         
         result = {
             'portfolio_name': portfolio_name,
@@ -521,14 +507,10 @@ class DataManager:
             financial_data = {}
             
             for symbol in stock_data.keys():
-                # Fetch financial data
-                fin_data = self.fetcher.fetch_financial_data(symbol)
-                if fin_data is not None:
-                    financial_data[symbol] = fin_data
-                
-                # Calculate intrinsic value
-                iv = self.calculate_intrinsic_value(symbol)
-                intrinsic_values[symbol] = iv
+                # External financial data fetching disabled (vnstock dependency removed)
+                print(f"External financial data fetching disabled for {symbol}")
+                financial_data[symbol] = None
+                intrinsic_values[symbol] = None
             
             result['intrinsic_values'] = intrinsic_values
             result['financial_data'] = financial_data
@@ -634,14 +616,10 @@ class DataManager:
             financial_data = {}
             
             for symbol in symbols:
-                # Fetch financial data
-                fin_data = self.fetcher.fetch_financial_data(symbol)
-                if fin_data is not None:
-                    financial_data[symbol] = fin_data
-                
-                # Calculate intrinsic value
-                iv = self.calculate_intrinsic_value(symbol)
-                intrinsic_values[symbol] = iv
+                # External financial data fetching disabled (vnstock dependency removed)
+                print(f"External financial data fetching disabled for {symbol}")
+                financial_data[symbol] = None
+                intrinsic_values[symbol] = None
             
             result['intrinsic_values'] = intrinsic_values
             result['financial_data'] = financial_data
@@ -703,5 +681,5 @@ class DataManager:
     
     def clear_caches(self):
         """Clear all caches."""
-        self.fetcher.clear_cache()
+        # self.fetcher.clear_cache()  # Removed vnstock dependency
         self.calculator.clear_cache()
