@@ -242,8 +242,8 @@ class TechnicalHelper:
         def style_values(val):
             return 'text-align: center; padding: 8px; font-family: monospace;'
         
-        styled_df = df.style.applymap(style_signals, subset=['Tín hiệu'])
-        styled_df = styled_df.applymap(style_values, subset=['Giá trị'])
+        styled_df = df.style.map(style_signals, subset=['Tín hiệu'])
+        styled_df = styled_df.map(style_values, subset=['Giá trị'])
         
         return styled_df
     

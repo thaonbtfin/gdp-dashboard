@@ -57,6 +57,7 @@ class TAstock_def:
 
         # Convert 'time' from YYYYMMDD integer to datetime objects
         try:
+            stock_df = stock_df.copy()
             stock_df['time'] = pd.to_datetime(stock_df['time']) # More robust if already datetime
         except Exception as e:
             st.error(f"Lỗi khi chuyển đổi cột 'time' sang định dạng ngày tháng cho biểu đồ: {e}.")
@@ -79,6 +80,7 @@ class TAstock_def:
             st.stop()
 
         # Ensure 'time' column is datetime
+        stock_df = stock_df.copy()
         stock_df['time'] = pd.to_datetime(stock_df['time']) 
 
         min_value = stock_df['time'].min().date()
@@ -276,7 +278,7 @@ class TAstock_st:
         df_for_perf_calc = raw_df.copy()
         if 'time' in df_for_perf_calc.columns:
             try:
-                df_for_perf_calc['time'] = pd.to_datetime(df_for_perf_calc['time'])
+                df_for_perf_calc.loc[:, 'time'] = pd.to_datetime(df_for_perf_calc['time'])
                 df_for_perf_calc = df_for_perf_calc.set_index('time')
             except Exception as e:
                 st.warning(f"Could not process 'time' column for performance calculation: {e}")
@@ -312,21 +314,22 @@ class TAstock_st:
             all_metrics = list(metric_labels.keys())
             
             if metrics_df.shape[0] > 0:
-                # Create a new DataFrame with metrics as rows and symbols as columns
-                formatted_df = pd.DataFrame(index=all_metrics)
-                
-                # Set the index names to display labels
-                formatted_df.index = [metric_labels.get(m, m) for m in formatted_df.index]
-                
-                # Add data for each symbol
+                # Build data dictionary for efficient DataFrame creation
+                data_dict = {}
                 for _, row in metrics_df.iterrows():
                     symbol = row['symbol']
+                    symbol_data = {}
                     for metric in all_metrics:
                         value = row.get(metric)
                         if pd.notna(value) and isinstance(value, (int, float)):
-                            formatted_df.loc[metric_labels.get(metric, metric), symbol] = f"{value:.2%}"
+                            symbol_data[metric_labels.get(metric, metric)] = f"{value:.2%}"
                         else:
-                            formatted_df.loc[metric_labels.get(metric, metric), symbol] = "N/A"
+                            symbol_data[metric_labels.get(metric, metric)] = "N/A"
+                    data_dict[symbol] = symbol_data
+                
+                # Create DataFrame efficiently
+                formatted_df = pd.DataFrame(data_dict).T
+                formatted_df = formatted_df.reindex(columns=[metric_labels.get(m, m) for m in all_metrics]).T
                 
                 st.dataframe(formatted_df)
             else:
@@ -362,21 +365,22 @@ class TAstock_st:
                 all_metrics = [m for m in metric_labels.keys() if m in perf_df.columns]
                 
                 if all_metrics and perf_df.shape[0] > 0:
-                    # Create a new DataFrame with metrics as rows and symbols as columns
-                    formatted_df = pd.DataFrame(index=all_metrics)
-                    
-                    # Set the index names to display labels
-                    formatted_df.index = [metric_labels.get(m, m) for m in formatted_df.index]
-                    
-                    # Add data for each symbol
+                    # Build data dictionary for efficient DataFrame creation
+                    data_dict = {}
                     for _, row in perf_df.iterrows():
                         symbol = row['symbol']
+                        symbol_data = {}
                         for metric in all_metrics:
                             value = row.get(metric)
                             if pd.notna(value) and isinstance(value, (int, float)):
-                                formatted_df.loc[metric_labels.get(metric, metric), symbol] = f"{value:.2%}"
+                                symbol_data[metric_labels.get(metric, metric)] = f"{value:.2%}"
                             else:
-                                formatted_df.loc[metric_labels.get(metric, metric), symbol] = "N/A"
+                                symbol_data[metric_labels.get(metric, metric)] = "N/A"
+                        data_dict[symbol] = symbol_data
+                    
+                    # Create DataFrame efficiently
+                    formatted_df = pd.DataFrame(data_dict).T
+                    formatted_df = formatted_df.reindex(columns=[metric_labels.get(m, m) for m in all_metrics]).T
                     
                     st.dataframe(formatted_df)
                     
@@ -386,9 +390,8 @@ class TAstock_st:
                         if not iv_df.empty and 'symbol' in iv_df.columns and 'intrinsic_value' in iv_df.columns:
                             st.header("Giá trị Nội tại (Từ dữ liệu đã lưu)", divider="gray")
                             
-                            # Format intrinsic values as a transposed table (symbols as columns)
-                            formatted_iv_df = pd.DataFrame(index=['Giá trị Nội tại'])
-                            
+                            # Build data dictionary for efficient DataFrame creation
+                            iv_data = {}
                             for _, row in iv_df.iterrows():
                                 symbol = row['symbol']
                                 value = row.get('intrinsic_value')
@@ -397,11 +400,14 @@ class TAstock_st:
                                         # Try to convert to float if it's a string
                                         if isinstance(value, str):
                                             value = float(value.replace(',', ''))
-                                        formatted_iv_df.loc['Giá trị Nội tại', symbol] = f"{value:,.2f}"
+                                        iv_data[symbol] = f"{value:,.2f}"
                                     except:
-                                        formatted_iv_df.loc['Giá trị Nội tại', symbol] = value
+                                        iv_data[symbol] = value
                                 else:
-                                    formatted_iv_df.loc['Giá trị Nội tại', symbol] = "N/A"
+                                    iv_data[symbol] = "N/A"
+                            
+                            # Create DataFrame efficiently
+                            formatted_iv_df = pd.DataFrame([iv_data], index=['Giá trị Nội tại'])
                             
                             st.dataframe(formatted_iv_df)
                     except Exception as e:
@@ -506,7 +512,7 @@ class TAstock_st:
         df = df.rename(columns={symbol: 'price'})
         
         # Calculate all technical indicators
-        TAstock_st._calculate_all_indicators(df)
+        df = TAstock_st._calculate_all_indicators(df)
         
         # Create comprehensive chart layout
         TAstock_st._display_comprehensive_charts(df, symbol, chart_type)
@@ -519,17 +525,20 @@ class TAstock_st:
         """Calculate all technical indicators."""
         import numpy as np
         
+        # Calculate all indicators and store in a dictionary
+        indicators = {}
+        
         # Moving Averages
-        df['MA5'] = df['price'].rolling(window=5).mean()
-        df['MA10'] = df['price'].rolling(window=10).mean()
-        df['MA20'] = df['price'].rolling(window=20).mean()
-        df['MA50'] = df['price'].rolling(window=50).mean()
-        df['MA100'] = df['price'].rolling(window=100).mean()
-        df['MA200'] = df['price'].rolling(window=200).mean()
+        indicators['MA5'] = df['price'].rolling(window=5).mean()
+        indicators['MA10'] = df['price'].rolling(window=10).mean()
+        indicators['MA20'] = df['price'].rolling(window=20).mean()
+        indicators['MA50'] = df['price'].rolling(window=50).mean()
+        indicators['MA100'] = df['price'].rolling(window=100).mean()
+        indicators['MA200'] = df['price'].rolling(window=200).mean()
         
         # Exponential Moving Averages
-        df['EMA12'] = df['price'].ewm(span=12).mean()
-        df['EMA26'] = df['price'].ewm(span=26).mean()
+        indicators['EMA12'] = df['price'].ewm(span=12).mean()
+        indicators['EMA26'] = df['price'].ewm(span=26).mean()
         
         # RSI
         def calculate_rsi(prices, window=14):
@@ -540,18 +549,18 @@ class TAstock_st:
             rsi = 100 - (100 / (1 + rs))
             return rsi
         
-        df['RSI'] = calculate_rsi(df['price'])
+        indicators['RSI'] = calculate_rsi(df['price'])
         
         # MACD
-        df['MACD'] = df['EMA12'] - df['EMA26']
-        df['MACD_Signal'] = df['MACD'].ewm(span=9).mean()
-        df['MACD_Histogram'] = df['MACD'] - df['MACD_Signal']
+        indicators['MACD'] = indicators['EMA12'] - indicators['EMA26']
+        indicators['MACD_Signal'] = indicators['MACD'].ewm(span=9).mean()
+        indicators['MACD_Histogram'] = indicators['MACD'] - indicators['MACD_Signal']
         
         # Bollinger Bands
-        df['BB_Middle'] = df['price'].rolling(window=20).mean()
+        indicators['BB_Middle'] = df['price'].rolling(window=20).mean()
         bb_std = df['price'].rolling(window=20).std()
-        df['BB_Upper'] = df['BB_Middle'] + (bb_std * 2)
-        df['BB_Lower'] = df['BB_Middle'] - (bb_std * 2)
+        indicators['BB_Upper'] = indicators['BB_Middle'] + (bb_std * 2)
+        indicators['BB_Lower'] = indicators['BB_Middle'] - (bb_std * 2)
         
         # Stochastic Oscillator
         def calculate_stochastic(high, low, close, k_period=14, d_period=3):
@@ -562,7 +571,7 @@ class TAstock_st:
             return k_percent, d_percent
         
         # For simplicity, use price as both high and low
-        df['Stoch_K'], df['Stoch_D'] = calculate_stochastic(df['price'], df['price'], df['price'])
+        indicators['Stoch_K'], indicators['Stoch_D'] = calculate_stochastic(df['price'], df['price'], df['price'])
         
         # Williams %R
         def calculate_williams_r(high, low, close, period=14):
@@ -571,7 +580,7 @@ class TAstock_st:
             wr = -100 * ((highest_high - close) / (highest_high - lowest_low))
             return wr
         
-        df['Williams_R'] = calculate_williams_r(df['price'], df['price'], df['price'])
+        indicators['Williams_R'] = calculate_williams_r(df['price'], df['price'], df['price'])
         
         # CCI (Commodity Channel Index)
         def calculate_cci(high, low, close, period=20):
@@ -581,17 +590,21 @@ class TAstock_st:
             cci = (tp - sma_tp) / (0.015 * mad)
             return cci
         
-        df['CCI'] = calculate_cci(df['price'], df['price'], df['price'])
+        indicators['CCI'] = calculate_cci(df['price'], df['price'], df['price'])
         
         # Volume indicators (using price change as proxy for volume)
-        df['Price_Change'] = df['price'].pct_change()
-        df['Volume_Proxy'] = abs(df['Price_Change']) * 1000000  # Simulated volume
+        indicators['Price_Change'] = df['price'].pct_change()
+        indicators['Volume_Proxy'] = abs(indicators['Price_Change']) * 1000000  # Simulated volume
         
         # On Balance Volume (OBV)
-        df['OBV'] = (np.sign(df['Price_Change']) * df['Volume_Proxy']).cumsum()
+        indicators['OBV'] = (np.sign(indicators['Price_Change']) * indicators['Volume_Proxy']).cumsum()
         
         # Money Flow Index (simplified)
-        df['MFI'] = df['RSI']  # Simplified as MFI for display
+        indicators['MFI'] = indicators['RSI']  # Simplified as MFI for display
+        
+        # Add all indicators to DataFrame at once using pd.concat
+        indicators_df = pd.DataFrame(indicators, index=df.index)
+        return pd.concat([df, indicators_df], axis=1)
     
     @staticmethod
     def _display_comprehensive_charts(df, symbol, chart_type):
@@ -1246,7 +1259,7 @@ class TAstock_st:
                         return ''
                 
                 # Apply styling to the final_signal column
-                styled_df = signals_df.style.applymap(
+                styled_df = signals_df.style.map(
                     color_final_signal, 
                     subset=['final_signal']
                 )
