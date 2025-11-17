@@ -52,7 +52,7 @@ def main():
     
     # Define scripts to run in sequence
     scripts = [
-        (os.path.join(scripts_dir, 'cafef_crawl_data_and_save_portfolios_to_root_folder.py'), 
+        (os.path.join(scripts_dir, 'crawl_cafef_data_and_save_portfolios_to_root_data_folder.py'),
          "1. Data Download (CafeF)"),
         (os.path.join(scripts_dir, 'wf_calculate_from_history.py'), 
          "2. Calculate Metrics"),
