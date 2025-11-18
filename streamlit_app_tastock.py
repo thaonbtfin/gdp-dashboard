@@ -7,6 +7,7 @@ from pathlib import Path
 from src.tastock.ui.dashboard import TAstock_def, TAstock_st
 from src.streamlit.streamlit_dashboard import Streamlit_def
 from src.tastock.data.data_manager import DataManager
+from src.portfolio_loader_csv import get_portfolios_csv
 from src.constants import DATA_DIR
 
 # Set the title and favicon that appear in the Browser's tab bar.
@@ -25,6 +26,52 @@ st.set_page_config(
 # ============================
 # Streamlit UI
 # ============================
+
+# Simple Portfolio Manager - CSV Based
+@st.cache_data(ttl=3600)
+def get_portfolios_cached():
+    return get_portfolios_csv()
+
+portfolios = get_portfolios_cached()
+
+# Simple portfolio summary with data info
+total_symbols = sum(len(symbols) for symbols in portfolios.values())
+from src.portfolio_loader_csv import get_latest_data_folder
+latest_folder = get_latest_data_folder()
+if latest_folder:
+    st.info(f"📊 {len(portfolios)} portfolios loaded • {total_symbols} symbols total • Data from: {latest_folder}")
+else:
+    st.warning("⚠️ No data folder found. Please run complete data update first.")
+
+# Sidebar data update section
+if latest_folder:
+    st.sidebar.markdown(f"📅 Current Data: {latest_folder}")
+
+# Button 1: Refresh Portfolios
+if st.sidebar.button("🔄 Refresh Portfolios"):
+    st.cache_data.clear()
+    st.rerun()
+
+# Button 2: Complete Data Update
+if st.sidebar.button("📊 Update Data (~5 min)"):
+    with st.spinner("Running complete data pipeline..."):
+        import subprocess
+        import sys
+        try:
+            result = subprocess.run(
+                [sys.executable, "src/tastock/workflows/wf_stock_data_updater.py"],
+                capture_output=True, text=True, timeout=300
+            )
+            if result.returncode == 0:
+                st.success("✅ Data pipeline completed! Refreshing page...")
+                st.cache_data.clear()
+                st.rerun()
+            else:
+                st.error(f"❌ Pipeline failed: {result.stderr}")
+        except subprocess.TimeoutExpired:
+            st.error("⏰ Pipeline timeout (5 minutes). Try running manually.")
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
 
 with st.spinner("Đang tải dữ liệu..."):
     df = Streamlit_def.load_data()

@@ -5,3 +5,7 @@ scikit-learn
 plotly
 requests
 numpy
+beautifulsoup4
+openpyxl
+selenium
+webdriver-manager

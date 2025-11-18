@@ -10,22 +10,42 @@ import sys
 # Add project root to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
-from src.constants import SYMBOLS_BIZUNI_NOW, SYMBOLS_VN100, SYMBOLS_VN30, SYMBOLS_DH, SYMBOLS_TH, SYMBOLS_BIZUNI_DH
+from src.portfolio_loader_csv import get_portfolios_csv as get_portfolios
 from src.tastock.data.data_downloader import DataWorkflowDownload
 
 def main():
     """Main function"""
     workflow = DataWorkflowDownload()
     
-    # Run workflow for all portfolios
-    portfolios = [
-        (SYMBOLS_BIZUNI_NOW, 'BizUni_Now'),
-        (SYMBOLS_VN100, 'VN100'),
-        (SYMBOLS_VN30, 'VN30')
-    ]
+    # Load portfolios from Google Sheets
+    print("\n=== PORTFOLIO SOURCE CHECK ===")
+    portfolios_dict = get_portfolios()
     
-    for symbols, portfolio_name in portfolios:
-        workflow.run_full_workflow(symbols=symbols, portfolio_name=portfolio_name)
+    # Check if portfolios loaded successfully from Google Sheets
+    try:
+        from src.constants import PORTFOLIOS
+        if portfolios_dict == PORTFOLIOS:
+            print("📁 PORTFOLIOS SOURCE: CONSTANTS (fallback)")
+        else:
+            print("📊 PORTFOLIOS SOURCE: GOOGLE SHEETS")
+    except ImportError:
+        from constants import PORTFOLIOS
+        if portfolios_dict == PORTFOLIOS:
+            print("📁 PORTFOLIOS SOURCE: CONSTANTS (fallback)")
+        else:
+            print("📊 PORTFOLIOS SOURCE: GOOGLE SHEETS")
+    
+    print(f"📋 Loaded {len(portfolios_dict)} portfolios: {list(portfolios_dict.keys())}")
+    
+    # Show portfolio details for debugging
+    for name, symbols in portfolios_dict.items():
+        print(f"  📁 {name}: {len(symbols)} symbols")
+    print("=" * 35)
+    
+    # Run workflow for all portfolios
+    for portfolio_name, symbols in portfolios_dict.items():
+        if symbols:  # Skip empty portfolios
+            workflow.run_full_workflow(symbols=symbols, portfolio_name=portfolio_name)
     
     # Merge all portfolios data to root files
     print("\n=== Merging all portfolios data to root ===")

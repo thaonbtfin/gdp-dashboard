@@ -99,31 +99,14 @@ SYMBOLS_VN100 = [
     'VIC', 'VIX', 'VJC', 'VND', 'VNM', 'VPB', 'VPI', 'VRE', 'VSC', 'VTP'
 ]
 
-# Portfolio
-PORTFOLIOS_TEST = {
-    # "DefaultStocks": SYMBOLS,       # e.g., ['ACB', 'FPT']
-    # "LongTerm": SYMBOLS_DH[:5],     # Taking first 5 for a quicker test
-    # "MidTerm": SYMBOLS_TH[:3],      # Taking first 3 for a quicker test
-    "VN30": SYMBOLS_VN30[:2],       # Taking first 2 for a quicker test
-    "VN100": SYMBOLS_VN100[:2],       # Taking first 2 for a quicker test
-    "EmptyTest": [],                # Test case for an empty symbol list
-    "SingleStockTest": ['ACB'],     # Test case for a portfolio with a single stock
-    # "TwoStockTest": ['ACB', 'FPT']  # Test case for a portfolio with 2 stocks
-}
-
+# Portfolio - Static fallback (kept for backward compatibility)
 PORTFOLIOS = {
-    "VN30": SYMBOLS_VN30,       # Taking first 2 for a quicker test
-    "VN100": SYMBOLS_VN100,       # Taking first 2 for a quicker test
-    "LongTerm": SYMBOLS_DH,     # Taking first 5 for a quicker test
-    "MidTerm": SYMBOLS_TH      # Taking first 3 for a quicker test
+    "VN30": SYMBOLS_VN30,
+    "VN100": SYMBOLS_VN100,
+    "LongTerm": SYMBOLS_DH,
+    "MidTerm": SYMBOLS_TH
 }
 
-PORTFOLIOS_VN = {
-    "VN30": SYMBOLS_VN30,       # Taking first 2 for a quicker test
-    "VN100": SYMBOLS_VN100       # Taking first 2 for a quicker test
-}
-
-PORTFOLIOS_TERM = {
-    "LongTerm": SYMBOLS_DH,     # Taking first 5 for a quicker test
-    "MidTerm": SYMBOLS_TH      # Taking first 3 for a quicker test
-}
+# Google Sheets configuration - Replace with your actual Google Sheets ID
+# Example: https://docs.google.com/spreadsheets/d/1ABC123DEF456/export?format=csv&gid=0
+GSHEET_PORTFOLIOS_URL = "https://docs.google.com/spreadsheets/d/1TMMwSp3x0F-6cwq2F8uX1sbD0ytFNu5ACJUobFnkMqA/export?format=csv&gid=0"

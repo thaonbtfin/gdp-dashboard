@@ -300,6 +300,28 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.join(script_dir, '../../..')
     
+    # Show portfolio source information
+    print("\n=== PORTFOLIO SOURCE CHECK ===")
+    try:
+        import sys
+        sys.path.append(project_root)
+        from src.portfolio_loader_csv import get_portfolios_csv as get_portfolios
+        from src.constants import PORTFOLIOS
+        
+        portfolios_dict = get_portfolios()
+        if portfolios_dict == PORTFOLIOS:
+            print("📁 PORTFOLIOS SOURCE: CONSTANTS (fallback)")
+        else:
+            print("📊 PORTFOLIOS SOURCE: GOOGLE SHEETS")
+        
+        print(f"📋 Available portfolios: {list(portfolios_dict.keys())}")
+        for name, symbols in portfolios_dict.items():
+            print(f"  📁 {name}: {len(symbols)} symbols")
+        print("=" * 35)
+    except Exception as e:
+        print(f"⚠️ Could not load portfolio info: {e}")
+        print("=" * 35)
+    
     # Read existing performance data
     perf_file = os.path.join(project_root, 'data/perf_all_symbols.csv')
     

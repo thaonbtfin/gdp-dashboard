@@ -280,6 +280,7 @@ class DataManager:
         
         for file_path in csv_files:
             try:
+                print(f"  📂 Processing file: {os.path.basename(file_path)}")
                 # Read CSV file with optimized settings for large files
                 df = pd.read_csv(file_path, dtype={
                     '<Ticker>': 'string',
@@ -297,7 +298,19 @@ class DataManager:
                     filter_symbols = list(symbols_filter)
                     if 'VNAll-INDEX' not in filter_symbols and 'VNINDEX' in filter_symbols:
                         filter_symbols.append('VNAll-INDEX')
+                    
+                    # Debug: show what symbols we're looking for vs what's available
+                    available_symbols = df['<Ticker>'].unique()
+                    print(f"  🔍 Looking for {len(filter_symbols)} symbols: {filter_symbols[:5]}...")
+                    print(f"  📊 Available in file: {len(available_symbols)} symbols: {list(available_symbols)[:5]}...")
+                    
                     df = df[df['<Ticker>'].isin(filter_symbols)]
+                    
+                    if not df.empty:
+                        found_symbols = df['<Ticker>'].unique()
+                        print(f"  ✅ Found {len(found_symbols)} symbols: {list(found_symbols)}")
+                    else:
+                        print(f"  ❌ No matching symbols found in {file_path}")
                 
                 # Skip if no data after filtering
                 if df.empty:

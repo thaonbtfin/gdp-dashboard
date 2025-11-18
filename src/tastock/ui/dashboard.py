@@ -236,14 +236,33 @@ class TAstock_st:
             with portfolio_tabs[0]:
                 TAstock_st.history_tab(stock_df_melted, "_all")
             
-            # Individual portfolio tabs
-            from src.constants import SYMBOLS_VN100, SYMBOLS_VN30, SYMBOLS_DH, SYMBOLS_TH
-            portfolios = [
-                ("VN100", SYMBOLS_VN100),
-                ("VN30", SYMBOLS_VN30), 
-                ("DH", SYMBOLS_DH),
-                ("TH", SYMBOLS_TH)
-            ]
+            # Individual portfolio tabs - Read from CSV files
+            from src.portfolio_loader_csv import get_portfolios_csv
+            
+            # Use CSV-based portfolios for speed
+            @st.cache_data(ttl=3600)
+            def get_cached_portfolios():
+                return get_portfolios_csv()
+            
+            portfolios_dict = get_cached_portfolios()
+            
+            # Map portfolio names to display names
+            portfolio_mapping = {
+                "VN100": "VN100",
+                "VN30": "VN30", 
+                "LongTerm": "DH",
+                "MidTerm": "TH"
+            }
+            
+            portfolios = []
+            for key, display_name in portfolio_mapping.items():
+                if key in portfolios_dict:
+                    portfolios.append((display_name, portfolios_dict[key]))
+                else:
+                    # Fallback to constants if not found in Google Sheets
+                    from src.constants import PORTFOLIOS
+                    if key in PORTFOLIOS:
+                        portfolios.append((display_name, PORTFOLIOS[key]))
             
             for i, (portfolio_name, symbols) in enumerate(portfolios, 1):
                 with portfolio_tabs[i]:
@@ -1219,11 +1238,13 @@ class TAstock_st:
         try:
             import os
             
-            # Try multiple possible paths
+            # Try enhanced signals first, then fallback to complete signals
             possible_paths = [
+                'data/investment_signals_enhanced.csv',
                 'data/investment_signals_complete.csv',
+                './data/investment_signals_enhanced.csv',
                 './data/investment_signals_complete.csv',
-                '/workspaces/gdp-dashboard/data/investment_signals_complete.csv',
+                os.path.join(os.getcwd(), 'data/investment_signals_enhanced.csv'),
                 os.path.join(os.getcwd(), 'data/investment_signals_complete.csv')
             ]
             
