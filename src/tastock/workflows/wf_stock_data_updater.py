@@ -72,13 +72,21 @@ def main():
         {
             'path': os.path.join(tastock_path, 'crawlers/bizuni_crawler.py'),
             'description': 'BizUni Crawler - Fetch additional market data'
+        },
+        {
+            'path': os.path.join(tastock_path, 'scripts/send_notifications.py'),
+            'description': 'Send Notifications - Alert high-confidence signals'
+        },
+        {
+            'path': os.path.join(tastock_path, 'scripts/git_commit_data.py'),
+            'description': 'Git Commit Data - Push CSV files to main branch'
         }
     ]
     
     # Execute scripts in sequence
     success_count = 0
     for i, script in enumerate(scripts, 1):
-        logging.info(f"\n[STEP {i}/5] {script['description']}")
+        logging.info(f"\n[STEP {i}/{len(scripts)}] {script['description']}")
         logging.info("-" * 50)
         
         if not os.path.exists(script['path']):
