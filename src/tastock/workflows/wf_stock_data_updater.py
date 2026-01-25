@@ -115,6 +115,28 @@ def main():
     
     if success_count == len(scripts):
         logging.info("✅ All scripts completed successfully!")
+        
+        # Auto-commit data files if workflow completed successfully
+        try:
+            logging.info("\n💾 Auto-committing updated data files...")
+            import subprocess
+            
+            # Add only root data CSV files
+            subprocess.run(["git", "add", "data/*.csv"], check=True, cwd=".")
+            
+            # Commit with timestamp
+            commit_msg = f"data: Update stock data files - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            subprocess.run(["git", "commit", "-m", commit_msg], check=True, cwd=".")
+            
+            # Push to remote
+            subprocess.run(["git", "push", "origin", "main"], check=True, cwd=".")
+            
+            logging.info("✅ Data files committed and pushed to git successfully!")
+        except subprocess.CalledProcessError as e:
+            logging.warning(f"⚠️ Git operations failed: {e}")
+        except Exception as e:
+            logging.warning(f"⚠️ Git operations error: {e}")
+        
         return 0
     else:
         logging.error("❌ Some scripts failed. Check logs above.")
