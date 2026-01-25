@@ -52,9 +52,9 @@ class BizUniCrawler:
             print(f"   ❌ OS not Darwin, returning None")
             return None
             
-        # Only allow specific users
+        # Only allow specific users - check exact username
         if username not in ['thaonguyen', 'anhchau']:
-            print(f"   ❌ User not in allowed list, returning None")
+            print(f"   ❌ User '{username}' not in allowed list ['thaonguyen', 'anhchau'], returning None")
             return None
         
         credentials = {
@@ -69,9 +69,12 @@ class BizUniCrawler:
         }
         
         result = credentials.get(username)
-        print(f"   ✅ Credentials found: {result is not None}")
+        print(f"   ✅ Credentials lookup result: {result is not None}")
         if result:
             print(f"   📧 Email: {result['email']}")
+            print(f"   🔑 Password length: {len(result['password'])} chars")
+        else:
+            print(f"   ❌ No credentials found for user: {username}")
         return result
     
     async def _try_auto_login(self):
@@ -91,95 +94,160 @@ class BizUniCrawler:
         try:
             # Wait for page to load completely
             print("🔄 Waiting for page to load...")
-            await self.page.wait_for_load_state('load', timeout=15000)
+            await self.page.wait_for_load_state('domcontentloaded', timeout=15000)
+            await self._human_delay(2, 3)
             
-            # Use exact selectors from the HTML structure
-            username_selector = '#form-element-username'
-            password_selector = '#form-element-password'
-            login_button_selector = 'button[type="submit"].btn.btn-p'
+            # Check if already logged in
+            current_url = self.page.url
+            if 'dang-nhap' not in current_url:
+                print("✅ Already logged in")
+                return True
             
-            # Wait for username field
-            print("🔍 Looking for login form...")
-            await self.page.wait_for_selector(username_selector, timeout=10000)
-            print("✅ Login form found")
+            # Use multiple selector strategies
+            username_selectors = [
+                '#form-element-username',
+                'input[name="username"]',
+                'input[type="email"]',
+                'input[placeholder*="email"]'
+            ]
             
-            # Fill username
-            await self.page.fill(username_selector, creds['email'])
-            print(f"✅ Username filled: {creds['email']}")
-            await self._human_delay(0.5, 1.0)
+            password_selectors = [
+                '#form-element-password', 
+                'input[name="password"]',
+                'input[type="password"]'
+            ]
             
-            # Fill password
-            await self.page.fill(password_selector, creds['password'])
-            print("✅ Password filled")
-            await self._human_delay(0.5, 1.0)
+            login_button_selectors = [
+                'button[type="submit"].btn.btn-p',
+                'button[type="submit"]',
+                '.btn-primary',
+                'input[type="submit"]'
+            ]
+            
+            # Find username field
+            username_field = None
+            for selector in username_selectors:
+                try:
+                    await self.page.wait_for_selector(selector, timeout=3000)
+                    username_field = selector
+                    print(f"✅ Found username field: {selector}")
+                    break
+                except:
+                    continue
+            
+            if not username_field:
+                print("❌ Could not find username field")
+                return False
+            
+            # Find password field
+            password_field = None
+            for selector in password_selectors:
+                try:
+                    await self.page.wait_for_selector(selector, timeout=3000)
+                    password_field = selector
+                    print(f"✅ Found password field: {selector}")
+                    break
+                except:
+                    continue
+            
+            if not password_field:
+                print("❌ Could not find password field")
+                return False
+            
+            # Clear and fill username
+            await self.page.click(username_field)
+            await self.page.fill(username_field, '')
+            await self.page.type(username_field, creds['email'], delay=100)
+            print(f"✅ Username entered: {creds['email']}")
+            await self._human_delay(1, 2)
+            
+            # Clear and fill password
+            await self.page.click(password_field)
+            await self.page.fill(password_field, '')
+            await self.page.type(password_field, creds['password'], delay=100)
+            print("✅ Password entered")
+            await self._human_delay(1, 2)
+            
+            # Find and click login button
+            login_button = None
+            for selector in login_button_selectors:
+                try:
+                    if await self.page.locator(selector).is_visible():
+                        login_button = selector
+                        print(f"✅ Found login button: {selector}")
+                        break
+                except:
+                    continue
+            
+            if not login_button:
+                print("❌ Could not find login button")
+                return False
             
             # Click login button
-            await self.page.click(login_button_selector)
+            await self.page.click(login_button)
             print("✅ Login button clicked")
             
-            # Wait for navigation with longer timeout
+            # Wait for navigation
             print("⏳ Waiting for login to complete...")
             try:
-                await self.page.wait_for_load_state('networkidle', timeout=25000)
+                await self.page.wait_for_load_state('networkidle', timeout=15000)
             except:
-                print("⚠️ Timeout waiting for networkidle, checking URL anyway...")
+                print("⚠️ Timeout waiting for networkidle")
+            
+            await self._human_delay(2, 3)
             
             # Check if login was successful
             current_url = self.page.url
             print(f"🌐 Current URL: {current_url}")
             
             if 'dang-nhap' not in current_url:
-                print("✅ Automated login successful - redirected away from login page")
+                print("✅ Automated login successful")
                 return True
             else:
-                print(f"⚠️ Still on login page, checking for error messages...")
-                # Check for error messages
-                try:
-                    error_elements = await self.page.locator('.alert, .error, .invalid').count()
-                    if error_elements > 0:
-                        error_text = await self.page.locator('.alert, .error, .invalid').first.text_content()
-                        print(f"❌ Login error: {error_text}")
-                except:
-                    pass
+                print("❌ Still on login page - login failed")
                 return False
                 
         except Exception as e:
             print(f"⚠️ Automated login failed: {e}")
-            # Take screenshot for debugging
-            try:
-                await self.page.screenshot(path='debug_login_failed.png')
-                print("📷 Debug screenshot saved: debug_login_failed.png")
-            except:
-                pass
             return False
     
     async def manual_login_prompt(self):
         """Try automated login first, fallback to manual login"""
-        # Start in headed mode for login
-        self.browser = await self.playwright.chromium.launch(headless=False, slow_mo=200)
-        self.context = await self.browser.new_context()
-        self.page = await self.context.new_page()
-        
-        print("➡️ Opening BizUni login page...")
-        await self.page.goto(f"{self.base_url}/dang-nhap", wait_until='load', timeout=30000)
-        print("✅ Login page loaded")
-        
-        # Try automated login first
-        print("\n🤖 Attempting automated login...")
-        if await self._try_auto_login():
-            print("✅ Automated login succeeded, proceeding with data extraction")
-            return
-        
-        # Fallback to manual login
-        print("❌ Automated login failed, falling back to manual login")
-        print("\n" + "="*60)
-        print("🔐 MANUAL LOGIN REQUIRED")
-        print("="*60)
-        print("Please login manually in the browser window.")
-        print("="*60)
-        await asyncio.to_thread(input, "\n👆 Press Enter AFTER you have successfully logged in: ")
-        
-        print("✅ Manual login completed")
+        try:
+            # Start in headed mode for login
+            self.browser = await self.playwright.chromium.launch(headless=False, slow_mo=200)
+            self.context = await self.browser.new_context()
+            self.page = await self.context.new_page()
+            
+            print("➡️ Opening BizUni login page...")
+            try:
+                await self.page.goto(f"{self.base_url}/dang-nhap", wait_until='domcontentloaded', timeout=60000)
+                print("✅ Login page loaded")
+            except Exception as e:
+                print(f"❌ Failed to load login page: {e}")
+                print("⚠️ BizUni website may be down or blocked")
+                raise
+            
+            # Try automated login first
+            print("\n🤖 Attempting automated login...")
+            if await self._try_auto_login():
+                print("✅ Automated login succeeded, proceeding with data extraction")
+                return
+            
+            # Fallback to manual login
+            print("❌ Automated login failed, falling back to manual login")
+            print("\n" + "="*60)
+            print("🔐 MANUAL LOGIN REQUIRED")
+            print("="*60)
+            print("Please login manually in the browser window.")
+            print("="*60)
+            await asyncio.to_thread(input, "\n👆 Press Enter AFTER you have successfully logged in: ")
+            
+            print("✅ Manual login completed")
+            
+        except Exception as e:
+            print(f"❌ Login process failed: {e}")
+            raise
     
     async def _detect_captcha(self) -> bool:
         """Detect if CAPTCHA or access denied page is shown"""

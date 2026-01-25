@@ -25,7 +25,7 @@ logging.basicConfig(
     ]
 )
 
-def run_script(script_path, description):
+def run_script(script_path, description, optional=False):
     """Execute a Python script and handle errors"""
     logging.info(f"▶️ Starting: {description}")
     logging.info(f"Executing: {script_path}")
@@ -38,9 +38,14 @@ def run_script(script_path, description):
             logging.info(f"Output: {result.stdout}")
         return True
     except subprocess.CalledProcessError as e:
-        logging.error(f"❌ Failed: {description}")
-        logging.error(f"Error: {e.stderr}")
-        return False
+        if optional:
+            logging.warning(f"⚠️ Optional step failed: {description}")
+            logging.warning(f"Error: {e.stderr}")
+            return True  # Continue pipeline for optional steps
+        else:
+            logging.error(f"❌ Failed: {description}")
+            logging.error(f"Error: {e.stderr}")
+            return False
 
 def main():
     """Execute the complete data pipeline workflow"""
@@ -55,31 +60,28 @@ def main():
     scripts = [
         {
             'path': os.path.join(tastock_path, 'scripts/crawl_cafef_data_and_save_portfolios_to_root_data_folder.py'),
-            'description': 'CafeF Data Crawler - Download stock data from CafeF'
+            'description': 'CafeF Data Crawler - Download stock data from CafeF',
+            'optional': False
         },
         {
             'path': os.path.join(tastock_path, 'scripts/calculate_from_history.py'),
-            'description': 'Calculate from History - Process historical performance data'
+            'description': 'Calculate from History - Process historical performance data',
+            'optional': True
         },
         {
             'path': os.path.join(tastock_path, 'scripts/generate_investment_signals.py'),
-            'description': 'Generate Investment Signals - Create trading recommendations'
+            'description': 'Generate Investment Signals - Create trading recommendations',
+            'optional': False
         },
         {
             'path': os.path.join(tastock_path, 'scripts/generate_intrinsic_values.py'),
-            'description': 'Generate Intrinsic Values - Calculate stock valuations'
+            'description': 'Generate Intrinsic Values - Calculate stock valuations',
+            'optional': True
         },
         {
             'path': os.path.join(tastock_path, 'crawlers/bizuni_crawler.py'),
-            'description': 'BizUni Crawler - Fetch additional market data'
-        },
-        {
-            'path': os.path.join(tastock_path, 'scripts/send_notifications.py'),
-            'description': 'Send Notifications - Alert high-confidence signals'
-        },
-        {
-            'path': os.path.join(tastock_path, 'scripts/git_commit_data.py'),
-            'description': 'Git Commit Data - Push CSV files to main branch'
+            'description': 'BizUni Crawler - Fetch additional market data (requires login)',
+            'optional': True
         }
     ]
     
@@ -93,10 +95,10 @@ def main():
             logging.error(f"Script not found: {script['path']}")
             continue
             
-        if run_script(script['path'], script['description']):
+        if run_script(script['path'], script['description'], script.get('optional', False)):
             success_count += 1
-        else:
-            logging.error(f"Pipeline failed at step {i}")
+        elif not script.get('optional', False):
+            logging.error(f"Pipeline failed at step {i} (required step)")
             break
     
     # Summary
