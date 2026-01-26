@@ -35,12 +35,17 @@ pip install -r requirements.txt
 ```
 
 ### 2. Run Application
-```bash
-# Option 1: Direct command
-streamlit run streamlit_app_tastock.py
 
-# Option 2: One-click script
-./run_tastock.sh
+**Option 1: Desktop Launcher (Recommended)**
+- **macOS**: Copy `launch_tastock_mac.command` to Desktop → Double-click
+- **Windows**: Copy `launch_tastock_win.bat` to Desktop → Double-click
+- Browser opens automatically at `http://localhost:8501`
+- **To Stop**: Press `Ctrl+C` in terminal window
+
+**Option 2: Command Line**
+```bash
+# Direct command
+streamlit run streamlit_app_tastock.py
 ```
 
 ### 3. Update Data (Optional)
@@ -91,6 +96,12 @@ python src/tastock/scripts/generate_investment_signals.py
 python src/tastock/crawlers/bizuni_crawler.py
 ```
 
+### 📅 Automated Scheduling
+
+**Setup daily updates at 6 PM (weekdays only):**
+
+See [SCHEDULER_SETUP.md](SCHEDULER_SETUP.md) for detailed instructions.
+
 ## 📚 Documentation
 
 - **[User Guide](doc/USER_GUIDE.md)**: Complete usage instructions
@@ -109,6 +120,11 @@ python src/tastock/crawlers/bizuni_crawler.py
 - **🔒 Reliable**: Robust error handling and fallbacks
 
 ## 🛠️ Advanced Usage
+
+### Desktop Shortcuts
+- **Create Desktop Icon**: Copy launcher files to Desktop for one-click access
+- **Resource Management**: Press `Ctrl+C` to stop server and free port 8501
+- **Auto Browser**: Launcher automatically opens browser to dashboard
 
 ### Portfolio Management
 ```bash
