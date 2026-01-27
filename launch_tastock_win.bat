@@ -1,6 +1,6 @@
 @echo off
 title TAstock Dashboard
-cd /d "C:\path\to\your\gdp-dashboard"
+cd /d "%~dp0"
 echo 🚀 Starting TAstock Dashboard...
 echo 📱 Browser will open automatically
 echo ⏹️  Press Ctrl+C to stop the server

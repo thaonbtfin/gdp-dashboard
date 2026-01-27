@@ -1,8 +1,8 @@
 #!/bin/bash
 # TAstock Desktop Launcher for macOS
 
-# Change to project directory
-cd "/Users/thaonguyen/dev/github/thaonbtfin/gdp-dashboard"
+# Change to script directory (where this file is located)
+cd "$(dirname "$0")"
 
 # Launch Streamlit and open browser
 echo "🚀 Starting TAstock Dashboard..."

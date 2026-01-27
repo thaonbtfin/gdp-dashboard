@@ -211,6 +211,128 @@ with bizuni_tab:
         st.warning("Không tìm thấy file bizuni_cpgt.csv. Vui lòng chạy crawler BizUni trước.")
 
 with notification_tab:
+    st.header("🔔 Cài đặt Thông báo")
+    
+    # Notification Configuration Section
+    with st.expander("⚙️ Cấu hình Thông báo", expanded=False):
+        st.markdown("### 📱 Cài đặt Kênh thông báo")
+        
+        # Load current config
+        from src.tastock.notifications.config import NotificationConfig
+        from src.tastock.notifications.gdrive_config import get_gdrive_url, set_gdrive_url, create_sample_config, get_folder_instructions
+        
+        # Google Drive configuration
+        st.markdown("### ☁️ Google Drive Configuration")
+        st.info("📁 **Shared Folder**: https://drive.google.com/drive/folders/1250E9USH25t0sy3np9ajhurpdYROpm9N")
+        
+        col_url1, col_url2 = st.columns([3, 1])
+        with col_url1:
+            gdrive_file_url = st.text_input(
+                "Config File URL",
+                value=get_gdrive_url(),
+                help="Upload notification_config.json to shared folder, share it, then paste URL here"
+            )
+        
+        with col_url2:
+            if st.button("💾 Save"):
+                if set_gdrive_url(gdrive_file_url):
+                    st.success("✅ Saved!")
+                else:
+                    st.error("❌ Failed")
+        
+        st.markdown("**📝 Setup Instructions:**")
+        st.markdown(get_folder_instructions())
+        st.code(create_sample_config(), language='json')
+        
+        config = NotificationConfig(gdrive_url=gdrive_file_url)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Telegram Bot**")
+            telegram_token = st.text_input("Bot Token", value=config.get('telegram_bot_token', ''), type="password")
+            telegram_chat = st.text_input("Chat ID", value=config.get('telegram_chat_id', ''))
+            
+            st.markdown("**Discord Webhook**")
+            discord_webhook = st.text_input("Webhook URL", value=config.get('discord_webhook_url', ''), type="password")
+        
+        with col2:
+            st.markdown("**Email SMTP**")
+            email_user = st.text_input("Email", value=config.get('email_user', ''))
+            email_pass = st.text_input("Password", value=config.get('email_pass', ''), type="password")
+            email_to = st.text_input("Send To", value=config.get('email_to', ''))
+            
+            st.markdown("**Pushover**")
+            pushover_token = st.text_input("App Token", value=config.get('pushover_app_token', ''), type="password")
+            pushover_user = st.text_input("User Key", value=config.get('pushover_user_key', ''), type="password")
+        
+        # Notification settings
+        st.markdown("### 🎯 Cài đặt Tín hiệu")
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            threshold = st.slider("Ngưỡng độ tin cậy (%)", 50, 100, config.get_threshold())
+            
+        with col4:
+            enabled_channels = st.multiselect(
+                "Kênh kích hoạt",
+                ['telegram', 'discord', 'email', 'pushover'],
+                default=config.get('enabled_channels', ['telegram', 'discord'])
+            )
+        
+        # Save configuration
+        if st.button("💾 Lưu cấu hình"):
+            new_config = {
+                'telegram_bot_token': telegram_token,
+                'telegram_chat_id': telegram_chat,
+                'discord_webhook_url': discord_webhook,
+                'email_user': email_user,
+                'email_pass': email_pass,
+                'email_to': email_to,
+                'pushover_app_token': pushover_token,
+                'pushover_user_key': pushover_user,
+                'notification_threshold': threshold,
+                'enabled_channels': enabled_channels
+            }
+            config.save_config(new_config)
+            st.success("✅ Đã lưu cấu hình thông báo!")
+            st.rerun()  # Refresh to show updated validation
+        
+        # Show config validation
+        st.markdown("**🔍 Config Status:**")
+        validation = config.validate_config()
+        col_val1, col_val2, col_val3, col_val4 = st.columns(4)
+        with col_val1:
+            st.write(f"Telegram: {'✅' if validation['telegram'] else '❌'}")
+        with col_val2:
+            st.write(f"Discord: {'✅' if validation['discord'] else '❌'}")
+        with col_val3:
+            st.write(f"Email: {'✅' if validation['email'] else '❌'}")
+        with col_val4:
+            st.write(f"Pushover: {'✅' if validation['pushover'] else '❌'}")
+        
+        # Test notification
+        if st.button("🧪 Test Thông báo"):
+            from src.tastock.notifications.notification_service import NotificationService
+            service = NotificationService(config.config)
+            
+            test_data = {
+                'stock_code': 'TEST',
+                'signal': 'BUY',
+                'confidence': 85,
+                'price': 50000
+            }
+            
+            results = service.send_notification(test_data)
+            
+            for channel, success in results.items():
+                if channel in enabled_channels:
+                    if success:
+                        st.success(f"✅ {channel.title()}: Thành công")
+                    else:
+                        st.error(f"❌ {channel.title()}: Thất bại - Kiểm tra cấu hình")
+    
+    st.markdown("### 📊 Tín hiệu Đầu tư")
     
     # Load investment signals
     signals_file = Path("data/investment_signals_complete.csv")
@@ -374,6 +496,45 @@ with notification_tab:
                     st.warning(f"📊 Tổng kết: {total_sell} tín hiệu SELL")
             else:
                 st.info("Hiện tại không có tín hiệu BUY hoặc SELL nào.")
+            
+            # Auto-notification toggle
+            st.markdown("### 🔔 Thông báo Tự động")
+            
+            col_auto1, col_auto2 = st.columns(2)
+            with col_auto1:
+                auto_notify = st.checkbox("Bật thông báo tự động", help="Tự động gửi thông báo khi có tín hiệu mới")
+            
+            with col_auto2:
+                if st.button("📤 Gửi thông báo ngay"):
+                    from src.tastock.notifications.notification_service import NotificationService
+                    from src.tastock.notifications.config import NotificationConfig
+                    from src.tastock.notifications.gdrive_config import get_gdrive_url
+                    
+                    config = NotificationConfig(gdrive_url=get_gdrive_url())
+                    service = NotificationService(config.config)
+                    
+                    # Send notifications for high-priority BUY signals
+                    high_priority_buys = buy_signals[buy_signals['priority'] == '🟢 Cao'] if not buy_signals.empty else pd.DataFrame()
+                    
+                    if not high_priority_buys.empty:
+                        sent_count = 0
+                        for _, row in high_priority_buys.iterrows():
+                            notification_data = {
+                                'stock_code': row['symbol'],
+                                'signal': 'BUY',
+                                'confidence': int(row['confidence_pct']),
+                                'price': row['current_price']
+                            }
+                            results = service.send_notification(notification_data)
+                            if any(results.values()):
+                                sent_count += 1
+                        
+                        if sent_count > 0:
+                            st.success(f"✅ Đã gửi {sent_count} thông báo BUY ưu tiên cao!")
+                        else:
+                            st.error("❌ Không thể gửi thông báo. Kiểm tra cấu hình.")
+                    else:
+                        st.info("Không có tín hiệu BUY ưu tiên cao để gửi.")
                 
         except Exception as e:
             st.error(f"Lỗi khi đọc dữ liệu tín hiệu: {e}")
