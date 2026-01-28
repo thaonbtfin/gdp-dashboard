@@ -1,6 +1,4 @@
 {
-    "python.analysis.extraPaths": [
-        "./src/vnstock-main",
-        "./src/vnstock-main/vnstock/common"
-    ]
+    "python.defaultInterpreterPath": "/opt/anaconda3/bin/python",
+    "python.pythonPath": "/opt/anaconda3/bin/python"
 }

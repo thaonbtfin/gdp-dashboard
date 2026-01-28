@@ -1,0 +1,12 @@
+{
+  "telegram_bot_token": "",
+  "telegram_chat_id": "",
+  "discord_webhook_url": "",
+  "email_user": "",
+  "email_pass": "",
+  "email_to": "",
+  "pushover_app_token": "",
+  "pushover_user_key": "",
+  "notification_threshold": 80,
+  "enabled_channels": ["telegram", "discord"]
+}

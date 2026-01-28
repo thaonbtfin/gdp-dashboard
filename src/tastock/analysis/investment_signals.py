@@ -4,12 +4,19 @@ Investment Signal Calculator for 3 methods: Value Investing, CANSLIM, Technical 
 import pandas as pd
 from typing import Dict, List, Tuple
 import numpy as np
+from ..notifications.notification_service import NotificationService
+from ..notifications.config import NotificationConfig
 
 class InvestmentSignalCalculator:
     
-    def __init__(self, vnindex_data: List[Dict] = None):
+    def __init__(self, vnindex_data: List[Dict] = None, enable_notifications: bool = False):
         """Initialize with VN-Index data for market direction"""
         self.vnindex_data = vnindex_data or []
+        self.enable_notifications = enable_notifications
+        if enable_notifications:
+            from ..notifications.gdrive_config import get_gdrive_url
+            self.notification_config = NotificationConfig(gdrive_url=get_gdrive_url())
+            self.notification_service = NotificationService(self.notification_config.config)
     
     def calculate_market_direction(self) -> Dict:
         """Calculate Market Direction from VN-Index data"""
@@ -304,12 +311,35 @@ class InvestmentSignalCalculator:
         else:
             final_signal = "HOLD"
         
-        return {
+        # Calculate confidence score
+        confidence = min(100, max(0, int((abs(total_score) / 4.5) * 100)))
+        
+        result = {
             'final_signal': final_signal,
             'total_score': total_score,
+            'confidence': confidence,
             'individual_signals': {
                 'value_investing': value_signals,
                 'canslim': canslim_signals,
                 'technical_analysis': technical_signals
             }
         }
+        
+        # Send notification if enabled and meets threshold
+        if (self.enable_notifications and 
+            confidence >= self.notification_config.get_threshold() and 
+            final_signal in ['BUY', 'SELL']):
+            
+            stock_code = stock_data.get('basic_info', {}).get('symbol', 'Unknown')
+            price = stock_data.get('basic_info', {}).get('current_price', 0)
+            
+            notification_data = {
+                'stock_code': stock_code,
+                'signal': final_signal,
+                'confidence': confidence,
+                'price': price
+            }
+            
+            self.notification_service.send_notification(notification_data)
+        
+        return result

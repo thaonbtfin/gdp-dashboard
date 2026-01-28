@@ -58,6 +58,7 @@ if st.sidebar.button("📊 Update Data (~5 min)"):
         import subprocess
         import sys
         try:
+            # Run the workflow which now includes Git commit and push
             result = subprocess.run(
                 [sys.executable, "src/tastock/workflows/wf_stock_data_updater.py"],
                 capture_output=True, text=True, timeout=300
