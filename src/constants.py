@@ -61,10 +61,10 @@ SYMBOLS_BIZUNI_DH = [
 # Dai han
 SYMBOLS_DH = [
     'VNINDEX',
-    'ACB', 'DGC', 'DGW', 'DHC', 'FMC', 'FPT', 'FRT', 'GIL', 'HDG','HPG',
-    'IDC', 'IDV', 'IJC', 'MBB', 'MWG', 'NTL', 'PDR', 'PNJ', 'PTB','PHR',
-    'QNS', 'REE', 'SSI', 'TCB', 'THG', 'TNG', 'TPB', 'CTR', 'TVS','VCB',
-    'VCI', 'VCS', 'BVB', 'VPB'
+    'ACB', 'BID', 'BMP', 'BWE', 'CMG', 'CTG', 'CTR', 'DBD', 'DGC', 'DGW',
+    'DPG', 'FPT', 'FRT', 'GMD', 'HDG', 'HPG', 'IMP', 'MBB', 'MWG', 'PNJ',
+    'PTB', 'QNS', 'REE', 'SIP', 'SSI', 'TCB', 'TLG', 'TPB', 'VCB', 'VGC',
+    'VHC', 'VIB'
 ]
 
 # Trung han
