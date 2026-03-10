@@ -6,6 +6,7 @@ This script runs the CafeF download workflow.
 
 import os
 import sys
+import importlib
 
 # Add project root to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -13,28 +14,40 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 from src.portfolio_loader_csv import get_portfolios_csv as get_portfolios
 from src.tastock.data.data_downloader import DataWorkflowDownload
 
+def load_portfolios_prefer_constants():
+    """Load portfolios preferring constants.py, fallback to CSV/Google Sheets."""
+    for module_name in ("src.constants", "constants"):
+        try:
+            mod = importlib.import_module(module_name)
+            portfolios = getattr(mod, "PORTFOLIOS", None)
+            if portfolios:
+                return portfolios, "CONSTANTS"
+        except Exception:
+            # ignore and try next module path
+            continue
+
+    # Fallback to CSV/Google Sheets loader
+    try:
+        portfolios = get_portfolios()
+        return portfolios, "GOOGLE SHEETS / CSV"
+    except Exception:
+        return {}, "FALLBACK_EMPTY"
+
 def main():
     """Main function"""
     workflow = DataWorkflowDownload()
-    
-    # Load portfolios from Google Sheets
+
+    # Load portfolios with preference for constants
     print("\n=== PORTFOLIO SOURCE CHECK ===")
-    portfolios_dict = get_portfolios()
-    
-    # Check if portfolios loaded successfully from Google Sheets
-    try:
-        from src.constants import PORTFOLIOS
-        if portfolios_dict == PORTFOLIOS:
-            print("📁 PORTFOLIOS SOURCE: CONSTANTS (fallback)")
-        else:
-            print("📊 PORTFOLIOS SOURCE: GOOGLE SHEETS")
-    except ImportError:
-        from constants import PORTFOLIOS
-        if portfolios_dict == PORTFOLIOS:
-            print("📁 PORTFOLIOS SOURCE: CONSTANTS (fallback)")
-        else:
-            print("📊 PORTFOLIOS SOURCE: GOOGLE SHEETS")
-    
+    portfolios_dict, source = load_portfolios_prefer_constants()
+
+    if source == "CONSTANTS":
+        print("📁 PORTFOLIOS SOURCE: CONSTANTS (primary)")
+    elif source == "GOOGLE SHEETS / CSV":
+        print("📊 PORTFOLIOS SOURCE: GOOGLE SHEETS / CSV (fallback)")
+    else:
+        print("⚠️ PORTFOLIOS SOURCE: NONE (empty fallback)")
+
     print(f"📋 Loaded {len(portfolios_dict)} portfolios: {list(portfolios_dict.keys())}")
     
     # Show portfolio details for debugging
