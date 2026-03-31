@@ -3,33 +3,43 @@ CafeF Crawler for fetching financial data from cafef.vn
 """
 
 import asyncio
-import pandas as pd
 from playwright.async_api import async_playwright
 from typing import Dict, List, Optional
 import re
-from datetime import datetime
 
 class CafeFCrawler:
     def __init__(self):
         self.base_url = "https://cafef.vn/du-lieu"
         self.playwright = None
         self.browser = None
+        self.context = None  # Add this
         self.page = None
     
     async def __aenter__(self):
         self.playwright = await async_playwright().start()
         self.browser = await self.playwright.chromium.launch(headless=True)
-        self.page = await self.browser.new_page()
+        self.context = await self.browser.new_context()  # Create context here
+        self.page = await self.context.new_page()  # Use context for page
+
+        # Dismiss any popup dialogs (including certificate warnings)
+        async def dialog_handler(dialog):
+            print(f"Dismissing dialog: {dialog.message}")
+            await dialog.dismiss()
+
+        self.page.on('dialog', dialog_handler)
+
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self.page:
             await self.page.close()
+        if self.context:
+            await self.context.close()
         if self.browser:
             await self.browser.close()
         if self.playwright:
             await self.playwright.stop()
-    
+
     async def get_stock_data(self, symbol: str) -> Dict:
         """Get comprehensive stock data from CafeF for investment analysis"""
         symbol = symbol.upper()
@@ -69,7 +79,8 @@ class CafeFCrawler:
                 response = await self.page.goto(url)
                 if response.status == 200:
                     return exchange.upper()
-            except:
+            except Exception as e:
+                print(f"Error getting exchange for {symbol}: {e}")
                 continue
         
         return 'HOSE'  # Default
@@ -179,35 +190,44 @@ class CafeFCrawler:
         except Exception as e:
             print(f"Error getting financial statements: {e}")
             return {}
-    
+
     async def _extract_financial_table(self, selector: str) -> List[Dict]:
         """Extract data from financial table"""
         try:
-            data = []
             table = await self.page.query_selector(selector)
-            if table:
-                rows = await table.query_selector_all('tr')
-                headers = []
-                
-                # Get headers
-                if rows:
-                    header_cells = await rows[0].query_selector_all('th')
-                    headers = [await cell.inner_text() for cell in header_cells]
-                
-                # Get data rows
-                for row in rows[1:]:
-                    cells = await row.query_selector_all('td')
-                    if len(cells) == len(headers):
-                        row_data = {}
-                        for i, cell in enumerate(cells):
-                            value = await cell.inner_text()
-                            row_data[headers[i]] = self._parse_number(value) if i > 0 else value
-                        data.append(row_data)
-            
-            return data
+            if not table:
+                return []
+
+            headers = await self._get_table_headers(table)
+            if not headers:
+                return []
+
+            return await self._get_table_data(table, headers)
         except Exception as e:
             print(f"Error extracting financial table: {e}")
             return []
+
+    async def _get_table_headers(self, table) -> List[str]:
+        """Extract headers from table"""
+        rows = await table.query_selector_all('tr')
+        if not rows:
+            return []
+        header_cells = await rows[0].query_selector_all('th')
+        return [await cell.inner_text() for cell in header_cells]
+
+    async def _get_table_data(self, table, headers: List[str]) -> List[Dict]:
+        """Extract data rows from table"""
+        data = []
+        rows = await table.query_selector_all('tr')
+        for row in rows[1:]:
+            cells = await row.query_selector_all('td')
+            if len(cells) == len(headers):
+                row_data = {}
+                for i, cell in enumerate(cells):
+                    value = await cell.inner_text()
+                    row_data[headers[i]] = self._parse_number(value) if i > 0 else value
+                data.append(row_data)
+        return data
     
     async def _extract_value(self, selector: str) -> float:
         """Extract numeric value from element"""
@@ -217,7 +237,8 @@ class CafeFCrawler:
                 text = await element.inner_text()
                 return self._parse_number(text)
             return 0.0
-        except:
+        except Exception as e:
+            print(f"Error extracting value from {selector}: {e}")
             return 0.0
     
     def _parse_number(self, text: str) -> float:
@@ -241,10 +262,11 @@ class CafeFCrawler:
             else:
                 # Thousand separator
                 cleaned = cleaned.replace(',', '')
-        
+
         try:
             return float(cleaned)
-        except:
+        except Exception as e:
+            print(f"Error parsing number: {e}")
             return 0.0
     
     async def _get_value_metrics(self) -> Dict:
@@ -287,47 +309,76 @@ class CafeFCrawler:
         except Exception as e:
             print(f"Error getting value metrics: {e}")
             return {}
-    
+
     async def _get_growth_metrics(self) -> Dict:
         """Get metrics for CANSLIM analysis"""
         try:
             metrics = {}
-            
+
             # Get quarterly EPS growth
-            eps_elements = await self.page.query_selector_all('text=EPS')
-            if eps_elements:
-                # Extract EPS data for growth calculation
-                eps_data = []
-                for element in eps_elements[:4]:  # Last 4 quarters
-                    parent = element.locator('..')
-                    value = await parent.locator('td').nth(-1).inner_text()
-                    eps_data.append(self._parse_number(value))
-                
-                if len(eps_data) >= 2:
-                    current_eps = eps_data[0]
-                    previous_eps = eps_data[1]
-                    if previous_eps > 0:
-                        metrics['eps_growth_quarterly'] = ((current_eps - previous_eps) / previous_eps) * 100
-            
+            eps_growth = await self._calculate_eps_growth()
+            if eps_growth is not None:
+                metrics['eps_growth_quarterly'] = eps_growth
+
             # Get revenue growth
-            revenue_elements = await self.page.query_selector_all('text=Doanh thu')
-            if revenue_elements:
-                revenue_data = []
-                for element in revenue_elements[:4]:  # Last 4 quarters
-                    parent = element.locator('..')
-                    value = await parent.locator('td').nth(-1).inner_text()
-                    revenue_data.append(self._parse_number(value))
-                
-                if len(revenue_data) >= 2:
-                    current_revenue = revenue_data[0]
-                    previous_revenue = revenue_data[1]
-                    if previous_revenue > 0:
-                        metrics['revenue_growth'] = ((current_revenue - previous_revenue) / previous_revenue) * 100
-            
+            revenue_growth = await self._calculate_revenue_growth()
+            if revenue_growth is not None:
+                metrics['revenue_growth'] = revenue_growth
+
             return metrics
         except Exception as e:
             print(f"Error getting growth metrics: {e}")
             return {}
+
+    async def _calculate_eps_growth(self) -> Optional[float]:
+        """Calculate EPS growth from elements"""
+        eps_elements = await self.page.query_selector_all('text=EPS')
+        if not eps_elements:
+            return None
+
+        eps_data = []
+        for element in eps_elements[:4]:
+            try:
+                parent = element.locator('..')
+                value = await parent.locator('td').nth(-1).inner_text()
+                eps_data.append(self._parse_number(value))
+            except Exception:
+                continue
+
+        if len(eps_data) < 2:
+            return None
+
+        current_eps = eps_data[0]
+        previous_eps = eps_data[1]
+        if previous_eps <= 0:
+            return None
+
+        return ((current_eps - previous_eps) / previous_eps) * 100
+
+    async def _calculate_revenue_growth(self) -> Optional[float]:
+        """Calculate revenue growth from elements"""
+        revenue_elements = await self.page.query_selector_all('text=Doanh thu')
+        if not revenue_elements:
+            return None
+
+        revenue_data = []
+        for element in revenue_elements[:4]:
+            try:
+                parent = element.locator('..')
+                value = await parent.locator('td').nth(-1).inner_text()
+                revenue_data.append(self._parse_number(value))
+            except Exception:
+                continue
+
+        if len(revenue_data) < 2:
+            return None
+
+        current_revenue = revenue_data[0]
+        previous_revenue = revenue_data[1]
+        if previous_revenue <= 0:
+            return None
+
+        return ((current_revenue - previous_revenue) / previous_revenue) * 100
     
     async def _calculate_technical_indicators(self) -> Dict:
         """Calculate technical indicators from price data"""
